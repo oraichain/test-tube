@@ -30,26 +30,14 @@ import (
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 
 	// osmosis
-	"github.com/osmosis-labs/osmosis/v19/app"
-	concentrateliquiditytypes "github.com/osmosis-labs/osmosis/v19/x/concentrated-liquidity/types"
-	gammtypes "github.com/osmosis-labs/osmosis/v19/x/gamm/types"
-	ibcratelimittypes "github.com/osmosis-labs/osmosis/v19/x/ibc-rate-limit/types"
-	incentivetypes "github.com/osmosis-labs/osmosis/v19/x/incentives/types"
-	lockuptypes "github.com/osmosis-labs/osmosis/v19/x/lockup/types"
-	minttypes "github.com/osmosis-labs/osmosis/v19/x/mint/types"
-	poolincentivetypes "github.com/osmosis-labs/osmosis/v19/x/pool-incentives/types"
-	poolmanagertypes "github.com/osmosis-labs/osmosis/v19/x/poolmanager/types"
-	protorevtypes "github.com/osmosis-labs/osmosis/v19/x/protorev/types"
-	superfluidtypes "github.com/osmosis-labs/osmosis/v19/x/superfluid/types"
-	tokenfactorytypes "github.com/osmosis-labs/osmosis/v19/x/tokenfactory/types"
-	twaptypes "github.com/osmosis-labs/osmosis/v19/x/twap/types"
+	"github.com/oraichain/orai/app"
 )
 
 type TestEnv struct {
-	App                *app.OsmosisApp
+	App                *app.OraichainApp
 	Ctx                sdk.Context
-	ParamTypesRegistry ParamTypeRegistry
 	ValPrivs           []*secp256k1.PrivKey
+	ParamTypesRegistry ParamTypeRegistry
 	NodeHome           string
 }
 
@@ -64,10 +52,15 @@ func (ao DebugAppOptions) Get(o string) interface{} {
 	return nil
 }
 
-func SetupOsmosisApp(nodeHome string) *app.OsmosisApp {
+var emptyWasmOpts []wasm.Option = nil
+
+func SetupOsmosisApp(nodeHome string) *app.OraichainApp {
 	db := dbm.NewMemDB()
 
-	appInstance := app.NewOsmosisApp(
+	cfg := sdk.GetConfig()
+	cfg.SetBech32PrefixForAccount("orai", "oraipub")
+
+	appInstance := app.NewOraichainApp(
 		log.NewNopLogger(),
 		db,
 		nil,
@@ -75,12 +68,14 @@ func SetupOsmosisApp(nodeHome string) *app.OsmosisApp {
 		map[int64]bool{},
 		nodeHome,
 		5,
+		app.MakeEncodingConfig(),
+		wasm.EnableAllProposals,
 		DebugAppOptions{},
-		app.EmptyWasmOpts,
+		emptyWasmOpts,
 	)
 
 	encCfg := app.MakeEncodingConfig()
-	genesisState := app.NewDefaultGenesisState()
+	genesisState := app.NewDefaultGenesisState(encCfg.Codec)
 
 	// Set up Wasm genesis state
 	wasmGen := wasm.GenesisState{
@@ -90,7 +85,7 @@ func SetupOsmosisApp(nodeHome string) *app.OsmosisApp {
 			InstantiateDefaultPermission: wasmtypes.AccessTypeEverybody,
 		},
 	}
-	genesisState[wasm.ModuleName] = encCfg.Marshaler.MustMarshalJSON(&wasmGen)
+	genesisState[wasm.ModuleName] = encCfg.Codec.MustMarshalJSON(&wasmGen)
 
 	// Set up staking genesis state
 	stakingParams := stakingtypes.DefaultParams()
@@ -98,31 +93,9 @@ func SetupOsmosisApp(nodeHome string) *app.OsmosisApp {
 	stakingGen := stakingtypes.GenesisState{
 		Params: stakingParams,
 	}
-	genesisState[stakingtypes.ModuleName] = encCfg.Marshaler.MustMarshalJSON(&stakingGen)
+	genesisState[stakingtypes.ModuleName] = encCfg.Codec.MustMarshalJSON(&stakingGen)
 
 	// Set up incentive genesis state
-	lockableDurations := []time.Duration{
-		time.Hour * 24,      // 1 day
-		time.Hour * 24 * 7,  // 7 day
-		time.Hour * 24 * 14, // 14 days
-	}
-	incentivesParams := incentivetypes.DefaultParams()
-	incentivesParams.DistrEpochIdentifier = "day"
-	incentivesGen := incentivetypes.GenesisState{
-		Params:            incentivesParams,
-		LockableDurations: lockableDurations,
-	}
-	genesisState[incentivetypes.ModuleName] = encCfg.Marshaler.MustMarshalJSON(&incentivesGen)
-
-	// Set up pool incentives genesis state
-	poolIncentivesParams := poolincentivetypes.DefaultParams()
-	poolIncentivesParams.MintedDenom = "uosmo"
-	poolIncentivesGen := poolincentivetypes.GenesisState{
-		Params:            poolIncentivesParams,
-		LockableDurations: lockableDurations,
-	}
-	genesisState[poolincentivetypes.ModuleName] = encCfg.Marshaler.MustMarshalJSON(&poolIncentivesGen)
-
 	stateBytes, err := json.MarshalIndent(genesisState, "", " ")
 
 	requireNoErr(err)
@@ -133,8 +106,8 @@ func SetupOsmosisApp(nodeHome string) *app.OsmosisApp {
 		MaxGas:   -1,
 	}
 
-	// replace sdk.DefaultDenom with "uosmo", a bit of a hack, needs improvement
-	stateBytes = []byte(strings.Replace(string(stateBytes), "\"stake\"", "\"uosmo\"", -1))
+	// replace sdk.DefaultDenom with "orai", a bit of a hack, needs improvement
+	stateBytes = []byte(strings.Replace(string(stateBytes), "\"stake\"", "\"orai\"", -1))
 
 	appInstance.InitChain(
 		abci.RequestInitChain{
@@ -162,7 +135,7 @@ func (env *TestEnv) BeginNewBlock(executeNextEpoch bool, timeIncreaseSeconds uin
 		valAddr = valAddr2.Bytes()
 
 		env.ValPrivs = append(env.ValPrivs, valPriv)
-		err := simapp.FundAccount(env.App.BankKeeper, env.Ctx, valAddrFancy.Bytes(), sdk.NewCoins(sdk.NewInt64Coin("uosmo", 9223372036854775807)))
+		err := simapp.FundAccount(env.App.BankKeeper, env.Ctx, valAddrFancy.Bytes(), sdk.NewCoins(sdk.NewInt64Coin("orai", 9223372036854775807)))
 		if err != nil {
 			panic(errors.Wrapf(err, "Failed to fund account"))
 		}
@@ -194,14 +167,9 @@ func (env *TestEnv) beginNewBlockWithProposer(executeNextEpoch bool, proposer sd
 
 	valAddr := valConsAddr.Bytes()
 
-	epochIdentifier := env.App.SuperfluidKeeper.GetEpochIdentifier(env.Ctx)
-	epoch := env.App.EpochsKeeper.GetEpochInfo(env.Ctx, epochIdentifier)
 	newBlockTime := env.Ctx.BlockTime().Add(time.Duration(timeIncreaseSeconds) * time.Second)
-	if executeNextEpoch {
-		newBlockTime = env.Ctx.BlockTime().Add(epoch.Duration).Add(time.Second)
-	}
 
-	header := tmtypes.Header{ChainID: "osmosis-1", Height: env.Ctx.BlockHeight() + 1, Time: newBlockTime}
+	header := tmtypes.Header{ChainID: "Oraichain", Height: env.Ctx.BlockHeight() + 1, Time: newBlockTime}
 	newCtx := env.Ctx.WithBlockTime(newBlockTime).WithBlockHeight(env.Ctx.BlockHeight() + 1)
 	env.Ctx = newCtx
 	lastCommitInfo := abci.LastCommitInfo{
@@ -226,7 +194,7 @@ func (env *TestEnv) setupValidator(bondStatus stakingtypes.BondStatus) (*secp256
 	err := simapp.FundAccount(env.App.BankKeeper, env.Ctx, sdk.AccAddress(valPub.Address()), selfBond)
 	requireNoErr(err)
 
-	stakingHandler := staking.NewHandler(*env.App.StakingKeeper)
+	stakingHandler := staking.NewHandler(env.App.StakingKeeper)
 	stakingCoin := sdk.NewCoin(bondDenom, selfBond[0].Amount)
 	ZeroCommission := stakingtypes.NewCommissionRates(sdk.ZeroDec(), sdk.ZeroDec(), sdk.ZeroDec())
 	msg, err := stakingtypes.NewMsgCreateValidator(valAddr, valPub, stakingCoin, stakingtypes.Description{}, ZeroCommission, sdk.OneInt())
@@ -260,20 +228,7 @@ func (env *TestEnv) setupValidator(bondStatus stakingtypes.BondStatus) (*secp256
 }
 
 func (env *TestEnv) SetupParamTypes() {
-	pReg := env.ParamTypesRegistry
 
-	pReg.RegisterParamSet(&lockuptypes.Params{})
-	pReg.RegisterParamSet(&incentivetypes.Params{})
-	pReg.RegisterParamSet(&minttypes.Params{})
-	pReg.RegisterParamSet(&twaptypes.Params{})
-	pReg.RegisterParamSet(&gammtypes.Params{})
-	pReg.RegisterParamSet(&ibcratelimittypes.Params{})
-	pReg.RegisterParamSet(&tokenfactorytypes.Params{})
-	pReg.RegisterParamSet(&superfluidtypes.Params{})
-	pReg.RegisterParamSet(&poolincentivetypes.Params{})
-	pReg.RegisterParamSet(&protorevtypes.Params{})
-	pReg.RegisterParamSet(&poolmanagertypes.Params{})
-	pReg.RegisterParamSet(&concentrateliquiditytypes.Params{})
 }
 
 func requireNoErr(err error) {

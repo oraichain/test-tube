@@ -233,7 +233,7 @@ func AccountSequence(envId uint64, bech32Address string) uint64 {
 		panic(err)
 	}
 
-	seq, err := env.App.AppKeepers.AccountKeeper.GetSequence(env.Ctx, addr)
+	seq, err := env.App.AccountKeeper.GetSequence(env.Ctx, addr)
 
 	if err != nil {
 		panic(err)
@@ -252,7 +252,7 @@ func AccountNumber(envId uint64, bech32Address string) uint64 {
 		panic(err)
 	}
 
-	acc := env.App.AppKeepers.AccountKeeper.GetAccount(env.Ctx, addr)
+	acc := env.App.AccountKeeper.GetAccount(env.Ctx, addr)
 	return acc.GetAccountNumber()
 }
 

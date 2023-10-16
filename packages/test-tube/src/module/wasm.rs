@@ -1,11 +1,12 @@
 #![cfg(feature = "wasm")]
 
-use cosmwasm_std::Coin;
-use osmosis_std::types::cosmwasm::wasm::v1::{
+use cosmrs::proto::cosmos::base::v1beta1::Coin;
+use cosmrs::proto::cosmwasm::wasm::v1::{
     AccessConfig, MsgExecuteContract, MsgExecuteContractResponse, MsgInstantiateContract,
     MsgInstantiateContractResponse, MsgStoreCode, MsgStoreCodeResponse,
     QuerySmartContractStateRequest, QuerySmartContractStateResponse,
 };
+
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::runner::error::{DecodeError, EncodeError, RunnerError};
@@ -63,15 +64,9 @@ where
                 sender: signer.address(),
                 admin: admin.unwrap_or_default().to_string(),
                 code_id,
-                label: label.unwrap_or(" ").to_string(), // empty string causes panic
+                label: label.unwrap_or("").to_string(), // empty string causes panic
                 msg: serde_json::to_vec(msg).map_err(EncodeError::JsonEncodeError)?,
-                funds: funds
-                    .iter()
-                    .map(|c| osmosis_std::types::cosmos::base::v1beta1::Coin {
-                        denom: c.denom.parse().unwrap(),
-                        amount: format!("{}", c.amount.u128()),
-                    })
-                    .collect(),
+                funds: funds.to_vec(),
             },
             "/cosmwasm.wasm.v1.MsgInstantiateContract",
             signer,
@@ -92,13 +87,7 @@ where
             MsgExecuteContract {
                 sender: signer.address(),
                 msg: serde_json::to_vec(msg).map_err(EncodeError::JsonEncodeError)?,
-                funds: funds
-                    .iter()
-                    .map(|c| osmosis_std::types::cosmos::base::v1beta1::Coin {
-                        denom: c.denom.parse().unwrap(),
-                        amount: format!("{}", c.amount.u128()),
-                    })
-                    .collect(),
+                funds: funds.to_vec(),
                 contract: contract.to_owned(),
             },
             "/cosmwasm.wasm.v1.MsgExecuteContract",

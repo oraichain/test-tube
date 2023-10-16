@@ -1,10 +1,10 @@
-use cosmrs::tx::MessageExt;
-use osmosis_std::shim::Any;
-use osmosis_std::types::cosmos::base::v1beta1::Coin;
-use osmosis_std::types::cosmos::gov::v1beta1::{
+use test_tube::cosmrs::proto::cosmos::base::v1beta1::Coin;
+use test_tube::cosmrs::proto::cosmos::gov::v1beta1::{
     MsgSubmitProposal, MsgSubmitProposalResponse, MsgVote, MsgVoteResponse, QueryParamsRequest,
     QueryParamsResponse, QueryProposalRequest, QueryProposalResponse, VoteOption,
 };
+use test_tube::cosmrs::tx::MessageExt;
+use test_tube::cosmrs::Any;
 use test_tube::{fn_execute, fn_query, Account, RunnerError, RunnerExecuteResult, SigningAccount};
 
 use test_tube::module::Module;
@@ -48,7 +48,7 @@ where
         msg: M,
         initial_deposit: Vec<cosmwasm_std::Coin>,
         proposer: String,
-        is_expedited: bool,
+        _is_expedited: bool,
         signer: &SigningAccount,
     ) -> RunnerExecuteResult<MsgSubmitProposalResponse> {
         self.submit_proposal(
@@ -67,7 +67,6 @@ where
                     })
                     .collect(),
                 proposer,
-                is_expedited,
             },
             signer,
         )
@@ -98,7 +97,7 @@ impl<'a> GovWithAppAccess<'a> {
         msg_type_url: String,
         msg: M,
         proposer: String,
-        is_expedited: bool,
+        _is_expedited: bool,
         signer: &SigningAccount,
     ) -> RunnerExecuteResult<MsgSubmitProposalResponse> {
         // query deposit params
@@ -122,7 +121,6 @@ impl<'a> GovWithAppAccess<'a> {
                 }),
                 initial_deposit: min_deposit,
                 proposer,
-                is_expedited,
             },
             signer,
         )?;
@@ -163,9 +161,9 @@ impl<'a> GovWithAppAccess<'a> {
 
 #[cfg(test)]
 mod tests {
-    use osmosis_std::types::{
-        cosmwasm::wasm::v1::{QueryCodeRequest, QueryCodeResponse, StoreCodeProposal},
-        osmosis::cosmwasmpool::v1beta1::UploadCosmWasmPoolCodeAndWhiteListProposal,
+
+    use test_tube::cosmrs::proto::cosmwasm::wasm::v1::{
+        QueryCodeRequest, QueryCodeResponse, StoreCodeProposal,
     };
     use test_tube::Account;
 
@@ -178,7 +176,7 @@ mod tests {
         let gov = GovWithAppAccess::new(&app);
 
         let proposer = app
-            .init_account(&[cosmwasm_std::Coin::new(1000000000000000000, "uosmo")])
+            .init_account(&[cosmwasm_std::Coin::new(1000000000000000000, "orai")])
             .unwrap();
 
         // query code id 1 should error since it has not been stored
@@ -198,9 +196,10 @@ mod tests {
 
         // store code through proposal
         let wasm_byte_code = std::fs::read("./test_artifacts/cw1_whitelist.wasm").unwrap();
+
         let res = gov
             .propose_and_execute(
-                StoreCodeProposal::TYPE_URL.to_string(),
+                "/cosmwasm.wasm.v1.StoreCodeProposal".to_string(),
                 StoreCodeProposal {
                     title: String::from("test"),
                     description: String::from("test"),
@@ -208,9 +207,6 @@ mod tests {
                     wasm_byte_code: wasm_byte_code.clone(),
                     instantiate_permission: None,
                     unpin_code: false,
-                    source: String::new(),
-                    builder: String::new(),
-                    code_hash: Vec::new(),
                 },
                 proposer.address(),
                 false,
@@ -230,33 +226,5 @@ mod tests {
 
         assert_eq!(code_info.unwrap().creator, proposer.address());
         assert_eq!(data, wasm_byte_code);
-    }
-
-    #[test]
-    fn test_cosmwasmpool_proposal() {
-        let app = OsmosisTestApp::default();
-        let gov = GovWithAppAccess::new(&app);
-
-        let proposer = app
-            .init_account(&[cosmwasm_std::Coin::new(1000000000000000000, "uosmo")])
-            .unwrap();
-
-        // upload cosmwasm pool code and whitelist through proposal
-        let wasm_byte_code = std::fs::read("./test_artifacts/transmuter.wasm").unwrap();
-        let res = gov
-            .propose_and_execute(
-                UploadCosmWasmPoolCodeAndWhiteListProposal::TYPE_URL.to_string(),
-                UploadCosmWasmPoolCodeAndWhiteListProposal {
-                    title: String::from("test"),
-                    description: String::from("test"),
-                    wasm_byte_code,
-                },
-                proposer.address(),
-                false,
-                &proposer,
-            )
-            .unwrap();
-
-        assert_eq!(res.data.proposal_id, 1);
     }
 }

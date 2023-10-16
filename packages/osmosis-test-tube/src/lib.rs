@@ -3,8 +3,7 @@
 mod module;
 mod runner;
 
-pub use cosmrs;
-pub use osmosis_std;
+pub use test_tube::cosmrs;
 
 pub use module::*;
 pub use runner::app::OsmosisTestApp;
