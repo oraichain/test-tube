@@ -32,11 +32,11 @@ where
             TxMsgData::decode(res.data.clone()).map_err(DecodeError::ProtoDecodeError)?;
 
         let msg_data = tx_msg_data
-            .msg_responses
+            .data
             .get(0)
             .ok_or(RunnerError::ExecuteError { msg: res.log })?;
 
-        let data = R::decode(msg_data.value.as_slice()).map_err(DecodeError::ProtoDecodeError)?;
+        let data = R::decode(msg_data.data.as_slice()).map_err(DecodeError::ProtoDecodeError)?;
 
         let events = res
             .events
@@ -80,7 +80,7 @@ where
             TxMsgData::decode(res.data.clone()).map_err(DecodeError::ProtoDecodeError)?;
 
         let msg_data = &tx_msg_data
-            .msg_responses
+            .data
             // since this tx contains exactly 1 msg
             // when getting none of them, that means error
             .get(0)
@@ -88,7 +88,7 @@ where
                 msg: res.log.to_string(),
             })?;
 
-        let data = R::decode(msg_data.value.as_slice()).map_err(DecodeError::ProtoDecodeError)?;
+        let data = R::decode(msg_data.data.as_slice()).map_err(DecodeError::ProtoDecodeError)?;
 
         let events = res
             .events

@@ -64,7 +64,7 @@ where
                 sender: signer.address(),
                 admin: admin.unwrap_or_default().to_string(),
                 code_id,
-                label: label.unwrap_or("").to_string(), // empty string causes panic
+                label: label.unwrap_or(" ").to_string(), // empty string causes panic
                 msg: serde_json::to_vec(msg).map_err(EncodeError::JsonEncodeError)?,
                 funds: funds.to_vec(),
             },
