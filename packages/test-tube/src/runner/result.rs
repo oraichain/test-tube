@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use crate::runner::error::{DecodeError, RunnerError};
 use cosmrs::proto::cosmos::base::abci::v1beta1::{GasInfo, TxMsgData};
 use cosmrs::proto::tendermint::v0_37::abci::ResponseDeliverTx;
