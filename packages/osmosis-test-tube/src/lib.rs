@@ -6,9 +6,12 @@ mod runner;
 pub use test_tube::cosmrs;
 
 pub use module::*;
-pub use runner::app::OsmosisTestApp;
+use runner::app::OsmosisTestApp;
 pub use test_tube::account::{Account, FeeSetting, NonSigningAccount, SigningAccount};
 pub use test_tube::runner::error::{DecodeError, EncodeError, RunnerError};
 pub use test_tube::runner::result::{ExecuteResponse, RunnerExecuteResult, RunnerResult};
 pub use test_tube::runner::Runner;
 pub use test_tube::{fn_execute, fn_query};
+
+// public export as OraichainTestApp to avoid conflicts
+pub use runner::app::OsmosisTestApp as OraichainTestApp;
