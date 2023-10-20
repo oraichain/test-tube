@@ -7,7 +7,7 @@ mod tests {
     use crate::{Bank, Wasm};
 
     use super::app::OsmosisTestApp;
-    use cosmwasm_std::{to_json_binary, BankMsg, Coin, CosmosMsg, Empty, Event, WasmMsg};
+    use cosmwasm_std::{to_binary, BankMsg, Coin, CosmosMsg, Empty, Event, WasmMsg};
     use cw1_whitelist::msg::{ExecuteMsg, InstantiateMsg};
 
     use test_tube::account::Account;
@@ -108,7 +108,7 @@ mod tests {
         // Wasm::Instantiate
         let instantiate_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Instantiate {
             code_id,
-            msg: to_json_binary(&InstantiateMsg {
+            msg: to_binary(&InstantiateMsg {
                 admins: vec![signer.address()],
                 mutable: true,
             })
@@ -127,7 +127,7 @@ mod tests {
         // Wasm::Execute
         let execute_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: contract_address.to_string(),
-            msg: to_json_binary(&ExecuteMsg::<Empty>::Freeze {}).unwrap(),
+            msg: to_binary(&ExecuteMsg::<Empty>::Freeze {}).unwrap(),
             funds: vec![],
         });
         let execute_res = app
