@@ -22,18 +22,19 @@ pub struct OsmosisTestApp {
 
 impl Default for OsmosisTestApp {
     fn default() -> Self {
-        OsmosisTestApp::new()
+        OsmosisTestApp::new(None)
     }
 }
 
 impl OsmosisTestApp {
-    pub fn new() -> Self {
+    pub fn new(node_home: Option<&str>) -> Self {
         Self {
             inner: BaseApp::new(
                 FEE_DENOM,
                 CHAIN_ID,
                 OSMO_ADDRESS_PREFIX,
                 DEFAULT_GAS_ADJUSTMENT,
+                node_home,
             ),
         }
     }

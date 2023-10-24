@@ -36,8 +36,11 @@ impl BaseApp {
         chain_id: &str,
         address_prefix: &str,
         default_gas_adjustment: f64,
+        default_node_home: Option<&str>,
     ) -> Self {
-        let id = unsafe { InitTestEnv() };
+        let node_home = default_node_home.unwrap_or_default();
+        redefine_as_go_string!(node_home);
+        let id = unsafe { InitTestEnv(node_home) };
         BaseApp {
             id,
             fee_denom: fee_denom.to_string(),

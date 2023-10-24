@@ -68,7 +68,7 @@ mod tests {
 
     #[test]
     fn test_execute_cosmos_msgs() {
-        let app = OsmosisTestApp::new();
+        let app = OsmosisTestApp::default();
         let signer = app
             .init_account(&[Coin::new(1000000000000, "orai")])
             .unwrap();

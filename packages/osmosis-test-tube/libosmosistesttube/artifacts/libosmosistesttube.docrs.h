@@ -74,7 +74,7 @@ typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 extern "C" {
 #endif
 
-extern GoUint64 InitTestEnv();
+extern GoUint64 InitTestEnv(GoString path);
 extern char* InitAccount(GoUint64 envId, GoString coinsJson);
 extern void BeginBlock(GoUint64 envId);
 extern void EndBlock(GoUint64 envId);

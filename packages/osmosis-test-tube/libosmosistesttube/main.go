@@ -45,7 +45,7 @@ var (
 )
 
 //export InitTestEnv
-func InitTestEnv() uint64 {
+func InitTestEnv(nodeHome string) uint64 {
 	// Temp fix for concurrency issue
 	mu.Lock()
 	defer mu.Unlock()
@@ -53,9 +53,12 @@ func InitTestEnv() uint64 {
 	envCounter += 1
 	id := envCounter
 
-	nodeHome, err := os.MkdirTemp("", ".osmosis-test-tube-temp-")
-	if err != nil {
-		panic(err)
+	if len(nodeHome) == 0 {
+		newNodeHome, err := os.MkdirTemp("", ".oraichain-test-tube-temp-")
+		if err != nil {
+			panic(err)
+		}
+		nodeHome = newNodeHome
 	}
 
 	env := new(testenv.TestEnv)
@@ -68,7 +71,7 @@ func InitTestEnv() uint64 {
 	// Allow testing unoptimized contract
 	wasmtypes.MaxWasmSize = 1024 * 1024 * 1024 * 1024 * 1024
 
-	env.Ctx = env.App.BaseApp.NewContext(false, tmproto.Header{Height: 0, ChainID: "osmosis-1", Time: time.Now().UTC()})
+	env.Ctx = env.App.BaseApp.NewContext(false, tmproto.Header{Height: 0, ChainID: "Oraichain", Time: time.Now().UTC()})
 
 	env.BeginNewBlock(false, 5)
 

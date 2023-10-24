@@ -209,7 +209,7 @@ fn bindgen_test_layout_GoSlice() {
     test_field_cap();
 }
 extern "C" {
-    pub fn InitTestEnv() -> GoUint64;
+    pub fn InitTestEnv(nodeHome: GoString) -> GoUint64;
 }
 extern "C" {
     pub fn InitAccount(envId: GoUint64, coinsJson: GoString) -> *mut ::std::os::raw::c_char;
