@@ -199,8 +199,8 @@ mod tests {
         let app = OsmosisTestApp::default();
         let alice = app
             .init_account(&[
-                Coin::new(1_000_000_000_000, "uatom"),
-                Coin::new(1_000_000_000_000, "orai"),
+                Coin::new(1_000_000_000_000u128, "uatom"),
+                Coin::new(1_000_000_000_000u128, "orai"),
             ])
             .unwrap();
 
@@ -223,8 +223,8 @@ mod tests {
         let accs = app
             .init_accounts(
                 &[
-                    Coin::new(1_000_000_000_000, "uatom"),
-                    Coin::new(1_000_000_000_000, "orai"),
+                    Coin::new(1_000_000_000_000u128, "uatom"),
+                    Coin::new(1_000_000_000_000u128, "orai"),
                 ],
                 2,
             )
@@ -291,7 +291,7 @@ mod tests {
         let alice = app.init_account(&coins(initial_balance, "orai")).unwrap();
         let bob = app.init_account(&coins(initial_balance, "orai")).unwrap();
 
-        let amount = Coin::new(1_000_000, "orai");
+        let amount = Coin::new(1_000_000u128, "orai");
         let gas_limit = 100_000_000;
 
         // use FeeSetting::Auto by default, so should not equal newly custom fee setting

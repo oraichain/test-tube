@@ -176,7 +176,7 @@ mod tests {
         let gov = GovWithAppAccess::new(&app);
 
         let proposer = app
-            .init_account(&[cosmwasm_std::Coin::new(1000000000000000000, "orai")])
+            .init_account(&[cosmwasm_std::Coin::new(1000000000000000000u128, "orai")])
             .unwrap();
 
         // query code id 1 should error since it has not been stored
