@@ -14,17 +14,15 @@ cosmrs = { git = "https://github.com/oraichain/cosmos-rust.git", features = [
     "cosmwasm",
     "rpc",
 ], rev = "061d0ec" }
-cosmwasm-std = { git = "https://github.com/oraichain/cosmwasm.git", rev = "c00899504d18cb598206d8ebf8287326725db803", features = [
-    "stargate",
-] }
-prost = "0.11.0"
-serde = "1.0.144"
-serde_json = "1.0.85"
-thiserror = "1.0.34"
+cosmwasm-std = { workspace = true, features = ["stargate"] }
+prost = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
-cw1-whitelist = "0.15.0"
-rayon = "1.5.3"
+cw1-whitelist = { workspace = true }
+rayon = { workspace = true }
 
 [features]
 default = []
