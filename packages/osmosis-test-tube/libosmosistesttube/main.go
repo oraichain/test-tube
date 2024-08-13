@@ -6,15 +6,16 @@ import (
 	// std
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
 	"time"
 
 	// helpers
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
-	"github.com/pkg/errors"
 
 	// tendermint
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -122,7 +123,7 @@ func InitAccount(envId uint64, coinsJson string) *C.char {
 
 	err := simapp.FundAccount(env.App.BankKeeper, env.Ctx, accAddr, coins)
 	if err != nil {
-		panic(errors.Wrapf(err, "Failed to fund account"))
+		panic(sdkerrors.Wrapf(err, "Failed to fund account"))
 	}
 
 	base64Priv := base64.StdEncoding.EncodeToString(priv.Bytes())

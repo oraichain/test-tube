@@ -1,5 +1,5 @@
 [submodule "packages/osmosis-test-tube/osmosis"]
 	path = packages/osmosis-test-tube/osmosis
 	url = https://github.com/oraichain/orai.git
-	branch = test-tube
+	branch = feat/public_keepers
 

@@ -7,9 +7,8 @@ import (
 	"time"
 
 	// helpers
-
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	// tendermint
-	"cosmossdk.io/errors"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtypes "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -72,6 +71,7 @@ func SetupOsmosisApp(nodeHome string) *app.OraichainApp {
 		wasm.EnableAllProposals,
 		DebugAppOptions{},
 		emptyWasmOpts,
+		app.DefaultEvmOptions,
 	)
 
 	encCfg := app.MakeEncodingConfig()
@@ -111,6 +111,7 @@ func SetupOsmosisApp(nodeHome string) *app.OraichainApp {
 
 	appInstance.InitChain(
 		abci.RequestInitChain{
+			ChainId:         "Oraichain",
 			Validators:      []abci.ValidatorUpdate{},
 			ConsensusParams: concensusParams,
 			AppStateBytes:   stateBytes,
@@ -137,7 +138,7 @@ func (env *TestEnv) BeginNewBlock(executeNextEpoch bool, timeIncreaseSeconds uin
 		env.ValPrivs = append(env.ValPrivs, valPriv)
 		err := simapp.FundAccount(env.App.BankKeeper, env.Ctx, valAddrFancy.Bytes(), sdk.NewCoins(sdk.NewInt64Coin("orai", 9223372036854775807)))
 		if err != nil {
-			panic(errors.Wrapf(err, "Failed to fund account"))
+			panic(sdkerrors.Wrapf(err, "Failed to fund account"))
 		}
 	}
 
