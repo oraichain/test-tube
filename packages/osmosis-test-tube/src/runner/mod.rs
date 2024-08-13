@@ -4,7 +4,7 @@ pub mod app;
 mod tests {
     use std::ffi::CString;
 
-    use crate::{Bank, Wasm};
+    use crate::{Bank, GovWithAppAccess, Wasm};
 
     use super::app::OsmosisTestApp;
     use cosmwasm_std::{to_json_binary, BankMsg, Coin, CosmosMsg, Empty, Event, WasmMsg};
@@ -13,7 +13,7 @@ mod tests {
     use test_tube::account::Account;
     use test_tube::cosmrs::proto::cosmos::bank::v1beta1::{MsgSendResponse, QueryBalanceRequest};
     use test_tube::cosmrs::proto::cosmwasm::wasm::v1::{
-        MsgExecuteContractResponse, MsgInstantiateContractResponse,
+        MsgExecuteContractResponse, MsgInstantiateContractResponse, SetGasLessContractsProposal,
     };
     use test_tube::runner::error::RunnerError::QueryError;
     use test_tube::runner::result::RawResult;
@@ -124,6 +124,21 @@ mod tests {
         let contract_address = init_res.data.address;
         assert_ne!(contract_address.to_string(), "".to_string());
 
+        let gov = GovWithAppAccess::new(&app);
+        let res = gov
+            .propose_and_execute(
+                "/cosmwasm.wasm.v1.SetGasLessContractsProposal".to_string(),
+                SetGasLessContractsProposal {
+                    title: String::from("test"),
+                    description: String::from("test"),
+                    contract_addresses: vec![contract_address.to_string()],
+                },
+                signer.address(),
+                false,
+                &signer,
+            )
+            .unwrap();
+
         // Wasm::Execute
         let execute_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: contract_address.to_string(),
@@ -133,6 +148,9 @@ mod tests {
         let execute_res = app
             .execute_cosmos_msgs::<MsgExecuteContractResponse>(&[execute_msg], &signer)
             .unwrap();
+
+        println!("gas info {:?}", execute_res.gas_info);
+
         let events = execute_res.events;
 
         let wasm_events: Vec<Event> = events.into_iter().filter(|x| x.ty == "wasm").collect();

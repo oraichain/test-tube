@@ -2,7 +2,7 @@
 
 use crate::runner::error::{DecodeError, RunnerError};
 use cosmrs::proto::cosmos::base::abci::v1beta1::{GasInfo, TxMsgData};
-use cosmrs::proto::tendermint::v0_37::abci::ResponseDeliverTx;
+use cosmrs::proto::tendermint::abci::ResponseDeliverTx;
 use cosmrs::rpc::endpoint::broadcast::tx_commit::Response as TxCommitResponse;
 use cosmwasm_std::{Attribute, Event};
 use prost::Message;
@@ -49,8 +49,8 @@ where
                         .into_iter()
                         .map(|a| -> Result<Attribute, Utf8Error> {
                             Ok(Attribute {
-                                key: std::str::from_utf8(a.key.as_bytes())?.to_string(),
-                                value: std::str::from_utf8(a.value.as_bytes())?.to_string(),
+                                key: std::str::from_utf8(&a.key)?.to_string(),
+                                value: std::str::from_utf8(&a.value)?.to_string(),
                             })
                         })
                         .collect::<Result<Vec<Attribute>, Utf8Error>>()?,

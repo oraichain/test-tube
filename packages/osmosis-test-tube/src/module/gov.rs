@@ -162,6 +162,7 @@ impl<'a> GovWithAppAccess<'a> {
 #[cfg(test)]
 mod tests {
 
+    use cosmwasm_std::HexBinary;
     use test_tube::cosmrs::proto::cosmwasm::wasm::v1::{
         QueryCodeRequest, QueryCodeResponse, StoreCodeProposal,
     };
@@ -207,6 +208,13 @@ mod tests {
                     wasm_byte_code: wasm_byte_code.clone(),
                     instantiate_permission: None,
                     unpin_code: false,
+                    source: "".to_string(),
+                    builder: "".to_string(),
+                    code_hash: HexBinary::from_hex(
+                        "6E340B9CFFB37A989CA544E6BB780A2C78901D3FB33738768511A30617AFA01D",
+                    )
+                    .unwrap()
+                    .to_vec(),
                 },
                 proposer.address(),
                 false,

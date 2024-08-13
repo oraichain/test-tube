@@ -10,11 +10,14 @@ version = "0.1.7"
 
 [dependencies]
 base64 = "0.13.0"
-cosmrs = { version = "0.15.0", features = ["cosmwasm", "rpc"] }
+cosmrs = { git = "https://github.com/oraichain/cosmos-rust.git", features = [
+    "cosmwasm",
+    "rpc",
+], rev = "061d0ec" }
 cosmwasm-std = { git = "https://github.com/oraichain/cosmwasm.git", rev = "c00899504d18cb598206d8ebf8287326725db803", features = [
     "stargate",
 ] }
-prost = "0.12.0"
+prost = "0.11.0"
 serde = "1.0.144"
 serde_json = "1.0.85"
 thiserror = "1.0.34"
