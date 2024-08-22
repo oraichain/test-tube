@@ -7,7 +7,7 @@ mod tests {
     use crate::{Bank, GovWithAppAccess, Wasm};
 
     use super::app::OsmosisTestApp;
-    use cosmwasm_std::{to_json_binary, BankMsg, Coin, CosmosMsg, Empty, Event, WasmMsg};
+    use cosmwasm_std::{coins, to_json_binary, BankMsg, Coin, CosmosMsg, Empty, Event, WasmMsg};
     use cw1_whitelist::msg::{ExecuteMsg, InstantiateMsg};
 
     use test_tube::account::Account;
@@ -125,19 +125,18 @@ mod tests {
         assert_ne!(contract_address.to_string(), "".to_string());
 
         let gov = GovWithAppAccess::new(&app);
-        let res = gov
-            .propose_and_execute(
-                "/cosmwasm.wasm.v1.SetGasLessContractsProposal".to_string(),
-                SetGasLessContractsProposal {
-                    title: String::from("test"),
-                    description: String::from("test"),
-                    contract_addresses: vec![contract_address.to_string()],
-                },
-                signer.address(),
-                false,
-                &signer,
-            )
-            .unwrap();
+        gov.propose_and_execute(
+            "/cosmwasm.wasm.v1.SetGasLessContractsProposal".to_string(),
+            SetGasLessContractsProposal {
+                title: String::from("test"),
+                description: String::from("test"),
+                contract_addresses: vec![contract_address.to_string()],
+            },
+            signer.address(),
+            false,
+            &signer,
+        )
+        .unwrap();
 
         // Wasm::Execute
         let execute_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -160,5 +159,79 @@ mod tests {
             assert_eq!(event.attributes[1].key, "action");
             assert_eq!(event.attributes[1].value, "freeze");
         }
+    }
+
+    #[test]
+    fn test_token_factory() {
+        let app = OsmosisTestApp::new();
+        let signer = app
+            .init_account(&[Coin::new(1000000000000u128, "orai")])
+            .unwrap();
+
+        // WasmMsg, first upload a contract
+        let wasm = Wasm::new(&app);
+        let wasm_byte_code = std::fs::read("./test_artifacts/tokenfactory.wasm").unwrap();
+        let code_id = wasm
+            .store_code(&wasm_byte_code, None, &signer)
+            .unwrap()
+            .data
+            .code_id;
+        assert_eq!(code_id, 1);
+
+        // Wasm::Instantiate
+        let instantiate_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Instantiate {
+            code_id,
+            msg: to_json_binary(&tokenfactory::msg::InstantiateMsg {}).unwrap(),
+            funds: vec![],
+            label: "test".to_string(),
+            admin: None,
+        });
+        let init_res = app
+            .execute_cosmos_msgs::<MsgInstantiateContractResponse>(&[instantiate_msg], &signer)
+            .unwrap();
+
+        let contract_address = init_res.data.address;
+        assert_ne!(contract_address.to_string(), "".to_string());
+
+        // Wasm::Execute
+        let execute_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: contract_address.to_string(),
+            msg: to_json_binary(&tokenfactory::msg::ExecuteMsg::CreateDenom {
+                subdenom: "test".to_string(),
+                metadata: None,
+            })
+            .unwrap(),
+            funds: coins(10000000, "orai"),
+        });
+        app.execute_cosmos_msgs::<MsgExecuteContractResponse>(&[execute_msg], &signer)
+            .unwrap();
+
+        // mint token
+        let to = app.init_account(&[]).unwrap();
+        let denom = format!("factory/{}/test", contract_address);
+        let execute_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: contract_address.to_string(),
+            msg: to_json_binary(&tokenfactory::msg::ExecuteMsg::MintTokens {
+                denom: denom.to_string(),
+                amount: 1_000_000u128.into(),
+                mint_to_address: to.address(),
+            })
+            .unwrap(),
+            funds: vec![],
+        });
+        app.execute_cosmos_msgs::<MsgExecuteContractResponse>(&[execute_msg], &signer)
+            .unwrap();
+
+        let bank = Bank::new(&app);
+        let balance = bank
+            .query_balance(&QueryBalanceRequest {
+                address: to.address(),
+                denom: denom.to_string(),
+            })
+            .unwrap()
+            .balance;
+
+        assert_eq!(balance.clone().unwrap().amount, 1_000_000.to_string());
+        assert_eq!(balance.unwrap().denom, denom);
     }
 }

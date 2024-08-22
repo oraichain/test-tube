@@ -23,4 +23,5 @@ bindgen = "0.60.1"
 
 [dev-dependencies]
 cw1-whitelist = { workspace = true }
+tokenfactory = { workspace = true }
 rayon = { workspace = true }
