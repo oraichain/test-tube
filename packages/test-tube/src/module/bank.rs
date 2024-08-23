@@ -3,7 +3,8 @@
 use crate::{fn_execute, fn_query};
 use cosmrs::proto::cosmos::bank::v1beta1::{
     MsgSend, MsgSendResponse, QueryAllBalancesRequest, QueryAllBalancesResponse,
-    QueryBalanceRequest, QueryBalanceResponse, QueryTotalSupplyRequest, QueryTotalSupplyResponse,
+    QueryBalanceRequest, QueryBalanceResponse, QuerySupplyOfRequest, QuerySupplyOfResponse,
+    QueryTotalSupplyRequest, QueryTotalSupplyResponse,
 };
 
 use crate::module::Module;
@@ -37,5 +38,9 @@ where
 
     fn_query! {
         pub query_total_supply ["/cosmos.bank.v1beta1.Query/TotalSupply"]: QueryTotalSupplyRequest => QueryTotalSupplyResponse
+    }
+
+    fn_query! {
+        pub query_supply_of ["/cosmos.bank.v1beta1.Query/SupplyOf"]: QuerySupplyOfRequest => QuerySupplyOfResponse
     }
 }
