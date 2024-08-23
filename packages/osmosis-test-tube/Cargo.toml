@@ -9,6 +9,10 @@ version = "19.2.0"
 
 exclude = ["osmosis", "test_artifacts"]
 
+[features]
+default = []
+wasm-sudo = ["test-tube/wasm-sudo"]
+
 [dependencies]
 base64 = "0.13.0"
 cosmwasm-std = { workspace = true }
@@ -25,3 +29,4 @@ bindgen = "0.60.1"
 cw1-whitelist = { workspace = true }
 tokenfactory = { workspace = true }
 rayon = { workspace = true }
+cosmwasm-schema = { workspace = true }

@@ -28,6 +28,6 @@ rayon = { workspace = true }
 default = []
 
 module-wrappers = ["bank", "wasm"]
-
+wasm-sudo = []
 bank = []
 wasm = []
