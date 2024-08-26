@@ -10,10 +10,10 @@ use test_tube::runner::result::{RunnerExecuteResult, RunnerResult};
 use test_tube::runner::Runner;
 use test_tube::BaseApp;
 
-const FEE_DENOM: &str = "orai";
-const OSMO_ADDRESS_PREFIX: &str = "orai";
-const CHAIN_ID: &str = "Oraichain";
-const DEFAULT_GAS_ADJUSTMENT: f64 = 1.2;
+pub const FEE_DENOM: &str = "orai";
+pub const OSMO_ADDRESS_PREFIX: &str = "orai";
+pub const CHAIN_ID: &str = "Oraichain";
+pub const DEFAULT_GAS_ADJUSTMENT: f64 = 1.2;
 
 #[derive(Debug, PartialEq)]
 pub struct OsmosisTestApp {
