@@ -15,3 +15,4 @@ pub use test_tube::{fn_execute, fn_query};
 
 // public export as OraichainTestApp to avoid conflicts
 pub use runner::app::OsmosisTestApp as OraichainTestApp;
+pub use runner::app::{CHAIN_ID, DEFAULT_GAS_ADJUSTMENT, FEE_DENOM, OSMO_ADDRESS_PREFIX};
