@@ -267,10 +267,10 @@ impl BaseApp {
         redefine_as_go_string!(contract_address);
 
         unsafe {
-            self.run_block(|| {
-                let res = crate::bindings::WasmSudo(self.id, contract_address, msg_string);
-                RawResult::from_non_null_ptr(res).into_result()
-            })
+            BeginBlock(self.id);
+            let res = crate::bindings::WasmSudo(self.id, contract_address, msg_string);
+            EndBlock(self.id);
+            RawResult::from_non_null_ptr(res).into_result()
         }
     }
 
