@@ -61,6 +61,9 @@ pub enum DecodeError {
     #[error("invalid json")]
     JsonDecodeError(#[from] serde_json::Error),
 
+    #[error("invalid json wasm")]
+    JsonWasmDecodeError(#[from] serde_json_wasm::de::Error),
+
     #[error("invalid base64")]
     Base64DecodeError(#[from] base64::DecodeError),
 
@@ -74,6 +77,9 @@ impl PartialEq for DecodeError {
             (DecodeError::Utf8Error(a), DecodeError::Utf8Error(b)) => a == b,
             (DecodeError::ProtoDecodeError(a), DecodeError::ProtoDecodeError(b)) => a == b,
             (DecodeError::JsonDecodeError(a), DecodeError::JsonDecodeError(b)) => {
+                a.to_string() == b.to_string()
+            }
+            (DecodeError::JsonWasmDecodeError(a), DecodeError::JsonWasmDecodeError(b)) => {
                 a.to_string() == b.to_string()
             }
             (DecodeError::Base64DecodeError(a), DecodeError::Base64DecodeError(b)) => a == b,
@@ -93,6 +99,9 @@ pub enum EncodeError {
 
     #[error("unable to encode json")]
     JsonEncodeError(#[from] serde_json::Error),
+
+    #[error("unable to encode json wasm")]
+    JsonWasmEncodeError(#[from] serde_json_wasm::ser::Error),
 }
 
 impl PartialEq for EncodeError {
@@ -100,6 +109,9 @@ impl PartialEq for EncodeError {
         match (self, other) {
             (EncodeError::ProtoEncodeError(a), EncodeError::ProtoEncodeError(b)) => a == b,
             (EncodeError::JsonEncodeError(a), EncodeError::JsonEncodeError(b)) => {
+                a.to_string() == b.to_string()
+            }
+            (EncodeError::JsonWasmEncodeError(a), EncodeError::JsonWasmEncodeError(b)) => {
                 a.to_string() == b.to_string()
             }
             _ => false,

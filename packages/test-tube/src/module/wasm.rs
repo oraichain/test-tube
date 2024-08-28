@@ -65,7 +65,7 @@ where
                 admin: admin.unwrap_or_default().to_string(),
                 code_id,
                 label: label.unwrap_or(" ").to_string(), // empty string causes panic
-                msg: serde_json::to_vec(msg).map_err(EncodeError::JsonEncodeError)?,
+                msg: serde_json_wasm::to_vec(msg).map_err(EncodeError::JsonWasmEncodeError)?,
                 funds: funds.to_vec(),
             },
             "/cosmwasm.wasm.v1.MsgInstantiateContract",
@@ -86,7 +86,7 @@ where
         self.runner.execute(
             MsgExecuteContract {
                 sender: signer.address(),
-                msg: serde_json::to_vec(msg).map_err(EncodeError::JsonEncodeError)?,
+                msg: serde_json_wasm::to_vec(msg).map_err(EncodeError::JsonWasmEncodeError)?,
                 funds: funds.to_vec(),
                 contract: contract.to_owned(),
             },
@@ -106,12 +106,13 @@ where
                 "/cosmwasm.wasm.v1.Query/SmartContractState",
                 &QuerySmartContractStateRequest {
                     address: contract.to_owned(),
-                    query_data: serde_json::to_vec(msg).map_err(EncodeError::JsonEncodeError)?,
+                    query_data: serde_json_wasm::to_vec(msg)
+                        .map_err(EncodeError::JsonWasmEncodeError)?,
                 },
             )?;
 
-        serde_json::from_slice(&res.data)
-            .map_err(DecodeError::JsonDecodeError)
+        serde_json_wasm::from_slice(&res.data)
+            .map_err(DecodeError::JsonWasmDecodeError)
             .map_err(RunnerError::DecodeError)
     }
 }

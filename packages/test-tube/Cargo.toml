@@ -18,6 +18,7 @@ cosmwasm-std = { workspace = true, features = ["stargate"] }
 prost = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde-json-wasm = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
