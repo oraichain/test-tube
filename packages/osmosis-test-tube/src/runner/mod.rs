@@ -7,7 +7,9 @@ mod tests {
     use crate::{Bank, GovWithAppAccess, Wasm};
 
     use super::app::OsmosisTestApp;
-    use cosmwasm_std::{coins, to_json_binary, BankMsg, Coin, CosmosMsg, Empty, Event, WasmMsg};
+    use cosmwasm_std::{
+        coins, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Empty, Event, WasmMsg,
+    };
     use cw1_whitelist::msg::{ExecuteMsg, InstantiateMsg};
 
     use test_tube::account::Account;
@@ -181,7 +183,7 @@ mod tests {
         // Wasm::Instantiate
         let instantiate_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Instantiate {
             code_id,
-            msg: to_json_binary(&tokenfactory::msg::InstantiateMsg {}).unwrap(),
+            msg: Binary::from(b"{}"),
             funds: vec![],
             label: "test".to_string(),
             admin: None,
@@ -196,11 +198,13 @@ mod tests {
         // Wasm::Execute
         let execute_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: contract_address.to_string(),
-            msg: to_json_binary(&tokenfactory::msg::ExecuteMsg::CreateDenom {
-                subdenom: "test".to_string(),
-                metadata: None,
-            })
-            .unwrap(),
+            msg: Binary::from(
+                br#"{
+                "create_denom": {
+                    "subdenom": "test"                
+                }    
+            }"#,
+            ),
             funds: coins(10000000, "orai"),
         });
         app.execute_cosmos_msgs::<MsgExecuteContractResponse>(&[execute_msg], &signer)
@@ -211,12 +215,20 @@ mod tests {
         let denom = format!("factory/{}/test", contract_address);
         let execute_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: contract_address.to_string(),
-            msg: to_json_binary(&tokenfactory::msg::ExecuteMsg::MintTokens {
-                denom: denom.to_string(),
-                amount: 1_000_000u128.into(),
-                mint_to_address: to.address(),
-            })
-            .unwrap(),
+            msg: Binary::from(
+                format!(
+                    r#"{{
+                    "mint_tokens": {{
+                        "denom": "{}",
+                        "amount": "1000000",
+                        "mint_to_address": "{}"
+                    }}
+                }}"#,
+                    denom,
+                    to.address()
+                )
+                .as_bytes(),
+            ),
             funds: vec![],
         });
         app.execute_cosmos_msgs::<MsgExecuteContractResponse>(&[execute_msg], &signer)

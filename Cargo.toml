@@ -14,4 +14,3 @@ serde_json = "1.0.85"
 thiserror = "1.0.34"
 cw1-whitelist = "1.0"
 rayon = "1.5.3"
-tokenfactory = { git = "https://github.com/oraichain/token-bindings.git", rev = "7861576" }
