@@ -2,7 +2,6 @@
 
 /* package command-line-arguments */
 
-
 #line 1 "cgo-builtin-export-prolog"
 
 #include <stddef.h>
@@ -11,18 +10,18 @@
 #define GO_CGO_EXPORT_PROLOGUE_H
 
 #ifndef GO_CGO_GOSTRING_TYPEDEF
-typedef struct { const char *p; ptrdiff_t n; } _GoString_;
+typedef struct
+{
+  const char *p;
+  ptrdiff_t n;
+} _GoString_;
 #endif
 
 #endif
 
 /* Start of preamble from import "C" comments.  */
 
-
-
-
 /* End of preamble from import "C" comments.  */
-
 
 /* Start of boilerplate cgo prologue.  */
 #line 1 "cgo-gcc-export-header-prolog"
@@ -56,33 +55,46 @@ typedef double _Complex GoComplex128;
   static assertion to make sure the file is being used on architecture
   at least with matching size of GoInt.
 */
-typedef char _check_for_64_bit_pointer_matching_GoInt[sizeof(void*)==64/8 ? 1:-1];
+typedef char _check_for_64_bit_pointer_matching_GoInt[sizeof(void *) == 64 / 8 ? 1 : -1];
 
 #ifndef GO_CGO_GOSTRING_TYPEDEF
 typedef _GoString_ GoString;
 #endif
 typedef void *GoMap;
 typedef void *GoChan;
-typedef struct { void *t; void *v; } GoInterface;
-typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
+typedef struct
+{
+  void *t;
+  void *v;
+} GoInterface;
+typedef struct
+{
+  void *data;
+  GoInt len;
+  GoInt cap;
+} GoSlice;
 
 #endif
 
 /* End of boilerplate cgo prologue.  */
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-extern GoUint64 InitTestEnv();
-extern char* InitAccount(GoUint64 envId, GoString coinsJson);
-extern void BeginBlock(GoUint64 envId);
-extern void EndBlock(GoUint64 envId);
-extern char* Execute(GoUint64 envId, GoString base64ReqDeliverTx);
-extern char* Query(GoUint64 envId, GoString path, GoString base64QueryMsgBytes);
-extern GoUint64 AccountSequence(GoUint64 envId, GoString bech32Address);
-extern GoUint64 AccountNumber(GoUint64 envId, GoString bech32Address);
-extern char* Simulate(GoUint64 envId, GoString base64TxBytes);
+  extern GoUint64 InitTestEnv();
+  extern char *InitAccount(GoUint64 envId, GoString coinsJson);
+  extern void SetBlockTime(GoUint64 envId, GoInt64 nanoseconds);
+  extern void IncreaseTime(GoUint64 envId, GoInt64 seconds);
+  extern void SetChainID(GoUint64 envId, GoString chainID);
+  extern void BeginBlock(GoUint64 envId);
+  extern void EndBlock(GoUint64 envId);
+  extern char *Execute(GoUint64 envId, GoString base64ReqDeliverTx);
+  extern char *Query(GoUint64 envId, GoString path, GoString base64QueryMsgBytes);
+  extern GoUint64 AccountSequence(GoUint64 envId, GoString bech32Address);
+  extern GoUint64 AccountNumber(GoUint64 envId, GoString bech32Address);
+  extern char *Simulate(GoUint64 envId, GoString base64TxBytes);
 
 #ifdef __cplusplus
 }
