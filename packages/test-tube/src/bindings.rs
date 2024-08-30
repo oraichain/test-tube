@@ -231,6 +231,12 @@ extern "C" {
     pub fn IncreaseTime(envId: GoUint64, seconds: GoInt64);
 }
 extern "C" {
+    pub fn SetBlockTime(envId: GoUint64, nanoseconds: GoInt64);
+}
+extern "C" {
+    pub fn SetChainID(envId: GoUint64, chainID: GoString);
+}
+extern "C" {
     pub fn Execute(envId: GoUint64, base64ReqDeliverTx: GoString) -> *mut ::std::os::raw::c_char;
 }
 extern "C" {

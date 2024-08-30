@@ -11,7 +11,7 @@ use crate::account::{Account, FeeSetting, SigningAccount};
 use crate::bindings::{
     AccountNumber, AccountSequence, BeginBlock, CleanUp, EndBlock, Execute, GetBlockHeight,
     GetBlockTime, GetParamSet, GetValidatorAddress, GetValidatorPrivateKey, IncreaseTime,
-    InitAccount, InitTestEnv, Query, SetParamSet, Simulate,
+    InitAccount, InitTestEnv, Query, SetBlockTime, SetChainID, SetParamSet, Simulate,
 };
 use crate::redefine_as_go_string;
 use crate::runner::error::{DecodeError, EncodeError, RunnerError};
@@ -51,6 +51,21 @@ impl BaseApp {
     pub fn increase_time(&self, seconds: u64) {
         unsafe {
             IncreaseTime(self.id, seconds.try_into().unwrap());
+        }
+    }
+
+    /// Set block time.
+    pub fn set_block_time_nanos(&self, nanoseconds: u64) {
+        unsafe {
+            SetBlockTime(self.id, nanoseconds.try_into().unwrap());
+        }
+    }
+
+    /// Set block chain id
+    pub fn set_chain_id(&self, chain_id: &str) {
+        unsafe {
+            redefine_as_go_string!(chain_id);
+            SetChainID(self.id, chain_id);
         }
     }
 

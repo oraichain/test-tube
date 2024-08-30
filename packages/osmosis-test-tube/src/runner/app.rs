@@ -53,6 +53,21 @@ impl OsmosisTestApp {
         self.inner.get_block_time_nanos() / 1_000_000_000i64
     }
 
+    /// Set the current block time in nanoseconds
+    pub fn set_block_time_nanos(&self, nanoseconds: u64) {
+        self.inner.set_block_time_nanos(nanoseconds)
+    }
+
+    /// Set the current block time in seconds
+    pub fn set_block_time_seconds(&self, seconds: u64) {
+        self.inner.set_block_time_nanos(seconds * 1_000_000_000u64)
+    }
+
+    /// Set the current chain id
+    pub fn set_chain_id(&self, chain_id: &str) {
+        self.inner.set_chain_id(chain_id)
+    }
+
     /// Get the current block height
     pub fn get_block_height(&self) -> i64 {
         self.inner.get_block_height()

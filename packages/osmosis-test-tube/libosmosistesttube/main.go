@@ -43,6 +43,7 @@ var (
 	envCounter  uint64 = 0
 	envRegister        = sync.Map{}
 	mu          sync.Mutex
+	chainID     = "Oraichain"
 )
 
 //export InitTestEnv
@@ -69,9 +70,10 @@ func InitTestEnv() uint64 {
 	// Allow testing unoptimized contract
 	wasmtypes.MaxWasmSize = 1024 * 1024 * 1024 * 1024 * 1024
 
-	env.Ctx = env.App.BaseApp.NewContext(false, tmproto.Header{Height: 0, ChainID: "Oraichain", Time: time.Now().UTC()})
+	env.Ctx = env.App.BaseApp.NewContext(false, tmproto.Header{Height: 0, ChainID: chainID, Time: time.Now().UTC()})
 
-	env.BeginNewBlock(false, 5)
+	blockTime := env.Ctx.BlockTime().Add(time.Duration(5) * time.Second)
+	env.BeginNewBlock(false, blockTime, chainID)
 
 	reqEndBlock := abci.RequestEndBlock{Height: env.Ctx.BlockHeight()}
 	env.App.EndBlock(reqEndBlock)
@@ -136,7 +138,23 @@ func InitAccount(envId uint64, coinsJson string) *C.char {
 //export IncreaseTime
 func IncreaseTime(envId uint64, seconds uint64) {
 	env := loadEnv(envId)
-	env.BeginNewBlock(false, seconds)
+	env.BeginNewBlock(false, env.Ctx.BlockTime().Add(time.Duration(seconds)*time.Second), env.Ctx.ChainID())
+	envRegister.Store(envId, env)
+	EndBlock(envId)
+}
+
+//export SetBlockTime
+func SetBlockTime(envId uint64, nanoseconds uint64) {
+	env := loadEnv(envId)
+	env.BeginNewBlock(false, time.Unix(0, int64(nanoseconds)), env.Ctx.ChainID())
+	envRegister.Store(envId, env)
+	EndBlock(envId)
+}
+
+//export SetChainID
+func SetChainID(envId uint64, chainID string) {
+	env := loadEnv(envId)
+	env.BeginNewBlock(false, env.Ctx.BlockTime(), chainID)
 	envRegister.Store(envId, env)
 	EndBlock(envId)
 }
@@ -144,7 +162,7 @@ func IncreaseTime(envId uint64, seconds uint64) {
 //export BeginBlock
 func BeginBlock(envId uint64) {
 	env := loadEnv(envId)
-	env.BeginNewBlock(false, 5)
+	env.BeginNewBlock(false, env.Ctx.BlockTime().Add(time.Duration(5)*time.Second), env.Ctx.ChainID())
 	envRegister.Store(envId, env)
 }
 

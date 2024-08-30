@@ -121,7 +121,7 @@ func SetupOsmosisApp(nodeHome string) *app.OraichainApp {
 	return appInstance
 }
 
-func (env *TestEnv) BeginNewBlock(executeNextEpoch bool, timeIncreaseSeconds uint64) {
+func (env *TestEnv) BeginNewBlock(executeNextEpoch bool, blockTime time.Time, chainID string) {
 	var valAddr []byte
 
 	validators := env.App.StakingKeeper.GetAllValidators(env.Ctx)
@@ -142,7 +142,7 @@ func (env *TestEnv) BeginNewBlock(executeNextEpoch bool, timeIncreaseSeconds uin
 		}
 	}
 
-	env.beginNewBlockWithProposer(executeNextEpoch, valAddr, timeIncreaseSeconds)
+	env.beginNewBlockWithProposer(executeNextEpoch, valAddr, blockTime, env.Ctx.BlockHeight()+1, chainID)
 }
 
 func (env *TestEnv) GetValidatorAddresses() []string {
@@ -156,7 +156,7 @@ func (env *TestEnv) GetValidatorAddresses() []string {
 }
 
 // beginNewBlockWithProposer begins a new block with a proposer.
-func (env *TestEnv) beginNewBlockWithProposer(_ bool, proposer sdk.ValAddress, timeIncreaseSeconds uint64) {
+func (env *TestEnv) beginNewBlockWithProposer(_ bool, proposer sdk.ValAddress, blockTime time.Time, blockHeight int64, chainID string) {
 	validator, found := env.App.StakingKeeper.GetValidator(env.Ctx, proposer)
 
 	if !found {
@@ -168,10 +168,8 @@ func (env *TestEnv) beginNewBlockWithProposer(_ bool, proposer sdk.ValAddress, t
 
 	valAddr := valConsAddr.Bytes()
 
-	newBlockTime := env.Ctx.BlockTime().Add(time.Duration(timeIncreaseSeconds) * time.Second)
-
-	header := tmtypes.Header{ChainID: "Oraichain", Height: env.Ctx.BlockHeight() + 1, Time: newBlockTime}
-	newCtx := env.Ctx.WithBlockTime(newBlockTime).WithBlockHeight(env.Ctx.BlockHeight() + 1)
+	header := tmtypes.Header{ChainID: chainID, Height: blockHeight, Time: blockTime}
+	newCtx := env.Ctx.WithBlockTime(blockTime).WithBlockHeight(blockHeight)
 	env.Ctx = newCtx
 	lastCommitInfo := abci.LastCommitInfo{
 		Votes: []abci.VoteInfo{{
