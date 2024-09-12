@@ -135,7 +135,7 @@ func InitAccount(envId uint64, coinsJson string) *C.char {
 	return C.CString(base64Priv)
 }
 
-// export SetupValidator
+//export SetupValidator
 func SetupValidator(envId uint64, coinsJson string) *C.char {
 	env := loadEnv(envId)
 	var coins sdk.Coins
