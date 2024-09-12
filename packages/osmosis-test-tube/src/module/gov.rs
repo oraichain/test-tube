@@ -208,10 +208,10 @@ mod tests {
                     wasm_byte_code: wasm_byte_code.clone(),
                     instantiate_permission: None,
                     unpin_code: false,
-                    source: "".to_string(),
-                    builder: "".to_string(),
+                    source: "https://github.com/oraichain/oraiwasm".to_string(),
+                    builder: "oraichain".to_string(),
                     code_hash: HexBinary::from_hex(
-                        "6E340B9CFFB37A989CA544E6BB780A2C78901D3FB33738768511A30617AFA01D",
+                        "FD84BBD8E8FB931B78371F849C340E045F6126C7F97B5516F2414167A090EA73",
                     )
                     .unwrap()
                     .to_vec(),
