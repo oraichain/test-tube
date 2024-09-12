@@ -2,6 +2,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(dead_code)]
+#![allow(improper_ctypes)]
 
 #[derive(PartialEq, Eq, Copy, Clone, Hash, Debug, Default)]
 #[repr(C)]
@@ -215,6 +216,9 @@ extern "C" {
     pub fn InitAccount(envId: GoUint64, coinsJson: GoString) -> *mut ::std::os::raw::c_char;
 }
 extern "C" {
+    pub fn SetupValidator(envId: GoUint64, coinsJson: GoString) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
     pub fn BeginBlock(envId: GoUint64);
 }
 extern "C" {
@@ -274,6 +278,12 @@ extern "C" {
 }
 extern "C" {
     pub fn GetValidatorPrivateKey(envId: GoUint64, n: GoInt32) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn GetValidatorAddresses(envId: GoUint64) -> Vec<*mut ::std::os::raw::c_char>;
+}
+extern "C" {
+    pub fn GetValidatorPrivateKeys(envId: GoUint64) -> Vec<*mut ::std::os::raw::c_char>;
 }
 extern "C" {
     pub fn GetBlockTime(envId: GoUint64) -> GoInt64;

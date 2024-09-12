@@ -8,6 +8,8 @@ import (
 
 	// helpers
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	"golang.org/x/exp/rand"
+
 	// tendermint
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
@@ -121,25 +123,30 @@ func SetupOsmosisApp(nodeHome string) *app.OraichainApp {
 	return appInstance
 }
 
+func (env *TestEnv) SetupValidator(coins sdk.Coins) stakingtypes.Validator {
+	valPriv, valAddrFancy := env.setupValidator(stakingtypes.Bonded)
+
+	env.ValPrivs = append(env.ValPrivs, valPriv)
+	err := simapp.FundAccount(env.App.BankKeeper, env.Ctx, valAddrFancy.Bytes(), coins)
+	if err != nil {
+		panic(sdkerrors.Wrapf(err, "Failed to fund account"))
+	}
+	validator, _ := env.App.StakingKeeper.GetValidator(env.Ctx, valAddrFancy)
+	return validator
+}
+
 func (env *TestEnv) BeginNewBlock(executeNextEpoch bool, blockTime time.Time, chainID string) {
 	var valAddr []byte
 
 	validators := env.App.StakingKeeper.GetAllValidators(env.Ctx)
 	if len(validators) >= 1 {
-		valAddrFancy, err := validators[0].GetConsAddr()
+		valAddrFancy, err := validators[rand.Intn(len(validators))].GetConsAddr()
 		requireNoErr(err)
 		valAddr = valAddrFancy.Bytes()
 	} else {
-		valPriv, valAddrFancy := env.setupValidator(stakingtypes.Bonded)
-		validator, _ := env.App.StakingKeeper.GetValidator(env.Ctx, valAddrFancy)
-		valAddr2, _ := validator.GetConsAddr()
-		valAddr = valAddr2.Bytes()
-
-		env.ValPrivs = append(env.ValPrivs, valPriv)
-		err := simapp.FundAccount(env.App.BankKeeper, env.Ctx, valAddrFancy.Bytes(), sdk.NewCoins(sdk.NewInt64Coin("orai", 9223372036854775807)))
-		if err != nil {
-			panic(sdkerrors.Wrapf(err, "Failed to fund account"))
-		}
+		validator := env.SetupValidator(sdk.NewCoins(sdk.NewInt64Coin("orai", 9223372036854775807)))
+		valConsAddr, _ := validator.GetConsAddr()
+		valAddr = valConsAddr.Bytes()
 	}
 
 	env.beginNewBlockWithProposer(executeNextEpoch, valAddr, blockTime, env.Ctx.BlockHeight()+1, chainID)

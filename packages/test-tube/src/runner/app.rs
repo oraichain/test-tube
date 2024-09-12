@@ -10,8 +10,9 @@ use prost::Message;
 use crate::account::{Account, FeeSetting, SigningAccount};
 use crate::bindings::{
     AccountNumber, AccountSequence, BeginBlock, CleanUp, EndBlock, Execute, GetBlockHeight,
-    GetBlockTime, GetParamSet, GetValidatorAddress, GetValidatorPrivateKey, IncreaseTime,
-    InitAccount, InitTestEnv, Query, SetBlockTime, SetChainID, SetParamSet, Simulate,
+    GetBlockTime, GetParamSet, GetValidatorAddress, GetValidatorAddresses, GetValidatorPrivateKey,
+    GetValidatorPrivateKeys, IncreaseTime, InitAccount, InitTestEnv, Query, SetBlockTime,
+    SetChainID, SetParamSet, SetupValidator, Simulate,
 };
 use crate::redefine_as_go_string;
 use crate::runner::error::{DecodeError, EncodeError, RunnerError};
@@ -82,6 +83,41 @@ impl BaseApp {
         Ok(addr)
     }
 
+    pub fn get_validator_addresses(&self) -> RunnerResult<Vec<String>> {
+        let addrs = unsafe {
+            let mut ret = vec![];
+            let addrs = GetValidatorAddresses(self.id);
+            for addr in addrs {
+                ret.push(
+                    CString::from_raw(addr)
+                        .to_str()
+                        .map_err(DecodeError::Utf8Error)?
+                        .to_string(),
+                );
+            }
+            ret
+        };
+
+        Ok(addrs)
+    }
+
+    pub fn get_validator_signing_accounts(&self) -> RunnerResult<Vec<SigningAccount>> {
+        let accounts = unsafe {
+            let mut ret = vec![];
+            let privs = GetValidatorPrivateKeys(self.id);
+            for key in privs {
+                let base64_priv = CString::from_raw(key)
+                    .to_str()
+                    .map_err(DecodeError::Utf8Error)?
+                    .to_string();
+                ret.push(self.get_validator_signing_account(&base64_priv)?);
+            }
+            ret
+        };
+
+        Ok(accounts)
+    }
+
     /// Get the first validator signing account
     pub fn get_first_validator_signing_account(&self) -> RunnerResult<SigningAccount> {
         let base64_priv = unsafe {
@@ -92,6 +128,10 @@ impl BaseApp {
         .map_err(DecodeError::Utf8Error)?
         .to_string();
 
+        self.get_validator_signing_account(&base64_priv)
+    }
+
+    fn get_validator_signing_account(&self, base64_priv: &str) -> RunnerResult<SigningAccount> {
         let secp256k1_priv = base64::decode(base64_priv).map_err(DecodeError::Base64DecodeError)?;
         let signging_key = SigningKey::from_bytes(&secp256k1_priv).map_err(|e| {
             let msg = e.to_string();
@@ -164,6 +204,28 @@ impl BaseApp {
     /// Initial coins balance
     pub fn init_accounts(&self, coins: &[Coin], count: u64) -> RunnerResult<Vec<SigningAccount>> {
         (0..count).map(|_| self.init_account(coins)).collect()
+    }
+
+    pub fn setup_validator(&self, coins: &[Coin]) -> RunnerResult<String> {
+        let mut coins = coins.to_vec();
+
+        // invalid coins if denom are unsorted
+        coins.sort_by(|a, b| a.denom.cmp(&b.denom));
+
+        let coins_json = serde_json::to_string(&coins).map_err(EncodeError::JsonEncodeError)?;
+        redefine_as_go_string!(coins_json);
+
+        let operator_addr = unsafe {
+            BeginBlock(self.id);
+            let addr = SetupValidator(self.id, coins_json);
+            EndBlock(self.id);
+            CString::from_raw(addr)
+        }
+        .to_str()
+        .map_err(DecodeError::Utf8Error)?
+        .to_string();
+
+        Ok(operator_addr)
     }
 
     fn create_signed_tx<I>(

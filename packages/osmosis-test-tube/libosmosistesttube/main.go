@@ -135,6 +135,20 @@ func InitAccount(envId uint64, coinsJson string) *C.char {
 	return C.CString(base64Priv)
 }
 
+// export SetupValidator
+func SetupValidator(envId uint64, coinsJson string) *C.char {
+	env := loadEnv(envId)
+	var coins sdk.Coins
+
+	if err := json.Unmarshal([]byte(coinsJson), &coins); err != nil {
+		panic(err)
+	}
+	validator := env.SetupValidator(coins)
+
+	return C.CString(validator.OperatorAddress)
+
+}
+
 //export IncreaseTime
 func IncreaseTime(envId uint64, seconds uint64) {
 	env := loadEnv(envId)
@@ -399,6 +413,17 @@ func GetValidatorAddress(envId uint64, n int32) *C.char {
 	return C.CString(env.GetValidatorAddresses()[n])
 }
 
+//export GetValidatorAddresses
+func GetValidatorAddresses(envId uint64) []*C.char {
+	env := loadEnv(envId)
+	var valAddrs []*C.char
+	addresses := env.GetValidatorAddresses()
+	for _, address := range addresses {
+		valAddrs = append(valAddrs, C.CString(address))
+	}
+	return valAddrs
+}
+
 //export GetValidatorPrivateKey
 func GetValidatorPrivateKey(envId uint64, n int32) *C.char {
 	env := loadEnv(envId)
@@ -406,6 +431,18 @@ func GetValidatorPrivateKey(envId uint64, n int32) *C.char {
 	priv := env.ValPrivs[n].Key
 	base64Priv := base64.StdEncoding.EncodeToString(priv)
 	return C.CString(base64Priv)
+}
+
+//export GetValidatorPrivateKeys
+func GetValidatorPrivateKeys(envId uint64) []*C.char {
+	env := loadEnv(envId)
+	var valPrivs []*C.char
+	for _, priv := range env.ValPrivs {
+		base64Priv := base64.StdEncoding.EncodeToString(priv.Key)
+		valPrivs = append(valPrivs, C.CString(base64Priv))
+	}
+
+	return valPrivs
 }
 
 // ========= utils =========

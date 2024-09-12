@@ -85,6 +85,7 @@ extern "C"
 
   extern GoUint64 InitTestEnv();
   extern char *InitAccount(GoUint64 envId, GoString coinsJson);
+  extern char *SetupValidator(GoUint64 envId, GoString coinsJson);
   extern void SetBlockTime(GoUint64 envId, GoInt64 nanoseconds);
   extern void IncreaseTime(GoUint64 envId, GoInt64 seconds);
   extern void SetChainID(GoUint64 envId, GoString chainID);
@@ -95,6 +96,10 @@ extern "C"
   extern GoUint64 AccountSequence(GoUint64 envId, GoString bech32Address);
   extern GoUint64 AccountNumber(GoUint64 envId, GoString bech32Address);
   extern char *Simulate(GoUint64 envId, GoString base64TxBytes);
+  extern char *GetValidatorPrivateKey(GoUint64 envId, GoInt32 n);
+  extern char *GetValidatorAddress(GoUint64 envId, GoInt32 n);
+  extern char **GetValidatorAddresses(GoUint64 envId);
+  extern char **GetValidatorPrivateKeys(GoUint64 envId);
 
 #ifdef __cplusplus
 }
