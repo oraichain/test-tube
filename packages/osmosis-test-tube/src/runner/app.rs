@@ -73,6 +73,14 @@ impl OsmosisTestApp {
         self.inner.get_block_height()
     }
 
+    pub fn setup_validator(&self, coins: &[Coin]) -> RunnerResult<String> {
+        self.inner.setup_validator(coins)
+    }
+
+    pub fn get_validator_addresses(&self) -> RunnerResult<Vec<String>> {
+        self.inner.get_validator_addresses()
+    }
+
     /// Get the first validator address
     pub fn get_first_validator_address(&self) -> RunnerResult<String> {
         self.inner.get_first_validator_address()
