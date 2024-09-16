@@ -218,7 +218,7 @@ replace (
 
 	// use kava fork to change evm denom & cosmos denom of evmutil module to aorai and orai
 	github.com/kava-labs/kava => github.com/oraichain/kava v0.21.2-0.20240912032433-02d96cd1054c
-	github.com/oraichain/orai => ../osmosis/orai
+	github.com/oraichain/orai => ../osmosis
 	// downgrade of goleveldb to avoid issues: see https://github.com/cosmos/cosmos-sdk/issues/14949
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 
