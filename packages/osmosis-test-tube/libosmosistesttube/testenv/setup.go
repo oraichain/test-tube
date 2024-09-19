@@ -19,9 +19,11 @@ import (
 
 	// cosmos-sdk
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/cosmos/cosmos-sdk/simapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	"github.com/cosmos/cosmos-sdk/x/staking"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -142,8 +144,42 @@ func SetupOsmosisApp(nodeHome string) *app.OraichainApp {
 	return appInstance
 }
 
-func (env *TestEnv) SetupValidator(coins sdk.Coins) stakingtypes.Validator {
-	valPriv, valAddrFancy := env.setupValidator(stakingtypes.Bonded)
+func (env *TestEnv) SetupAccount(coins sdk.Coins) cryptotypes.PrivKey {
+	priv := secp256k1.GenPrivKey()
+	env.SetupAccountWithPrivKey(coins, priv)
+	return priv
+}
+
+func (env *TestEnv) SetupAccountWithPrivKey(coins sdk.Coins, priv cryptotypes.PrivKey) sdk.AccAddress {
+	accAddr := sdk.AccAddress(priv.PubKey().Address())
+
+	for _, coin := range coins {
+		// create denom if not exist
+		_, hasDenomMetaData := env.App.BankKeeper.GetDenomMetaData(env.Ctx, coin.Denom)
+		if !hasDenomMetaData {
+			denomMetaData := banktypes.Metadata{
+				DenomUnits: []*banktypes.DenomUnit{{
+					Denom:    coin.Denom,
+					Exponent: 0,
+				}},
+				Base: coin.Denom,
+			}
+
+			env.App.BankKeeper.SetDenomMetaData(env.Ctx, denomMetaData)
+		}
+
+	}
+
+	err := simapp.FundAccount(env.App.BankKeeper, env.Ctx, accAddr, coins)
+	if err != nil {
+		panic(sdkerrors.Wrapf(err, "Failed to fund account"))
+	}
+
+	return accAddr
+}
+
+func (env *TestEnv) SetupValidatorWithPrivKey(coins sdk.Coins, valPriv cryptotypes.PrivKey) stakingtypes.Validator {
+	valAddrFancy := env.setupValidator(stakingtypes.Bonded, valPriv)
 
 	env.ValPrivs = append(env.ValPrivs, valPriv)
 	err := simapp.FundAccount(env.App.BankKeeper, env.Ctx, valAddrFancy.Bytes(), coins)
@@ -152,6 +188,11 @@ func (env *TestEnv) SetupValidator(coins sdk.Coins) stakingtypes.Validator {
 	}
 	validator, _ := env.App.StakingKeeper.GetValidator(env.Ctx, valAddrFancy)
 	return validator
+}
+
+func (env *TestEnv) SetupValidator(coins sdk.Coins) stakingtypes.Validator {
+	valPriv := ed25519.GenPrivKey()
+	return env.SetupValidatorWithPrivKey(coins, valPriv)
 }
 
 func (env *TestEnv) BeginNewBlock(executeNextEpoch bool, blockTime time.Time, chainID string) {
@@ -209,8 +250,8 @@ func (env *TestEnv) beginNewBlockWithProposer(_ bool, proposer sdk.ValAddress, b
 	env.Ctx = env.App.NewContext(false, reqBeginBlock.Header)
 }
 
-func (env *TestEnv) setupValidator(bondStatus stakingtypes.BondStatus) (cryptotypes.PrivKey, sdk.ValAddress) {
-	valPriv := ed25519.GenPrivKey()
+func (env *TestEnv) setupValidator(bondStatus stakingtypes.BondStatus, valPriv cryptotypes.PrivKey) sdk.ValAddress {
+
 	valPub := valPriv.PubKey()
 	valAddr := sdk.ValAddress(valPub.Address())
 	bondDenom := env.App.StakingKeeper.GetParams(env.Ctx).BondDenom
@@ -249,7 +290,7 @@ func (env *TestEnv) setupValidator(bondStatus stakingtypes.BondStatus) (cryptoty
 	)
 	env.App.SlashingKeeper.SetValidatorSigningInfo(env.Ctx, consAddr, signingInfo)
 
-	return valPriv, valAddr
+	return valAddr
 }
 
 func (env *TestEnv) SetupParamTypes() {

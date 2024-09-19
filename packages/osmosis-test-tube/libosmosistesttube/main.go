@@ -13,7 +13,7 @@ import (
 	"time"
 
 	// helpers
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 
@@ -22,12 +22,10 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 
 	// cosmos sdk
-
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
-	"github.com/cosmos/cosmos-sdk/simapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
 	// wasmd
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
@@ -103,30 +101,31 @@ func InitAccount(envId uint64, coinsJson string) *C.char {
 		panic(err)
 	}
 
-	priv := secp256k1.GenPrivKey()
-	accAddr := sdk.AccAddress(priv.PubKey().Address())
+	priv := env.SetupAccount(coins)
 
-	for _, coin := range coins {
-		// create denom if not exist
-		_, hasDenomMetaData := env.App.BankKeeper.GetDenomMetaData(env.Ctx, coin.Denom)
-		if !hasDenomMetaData {
-			denomMetaData := banktypes.Metadata{
-				DenomUnits: []*banktypes.DenomUnit{{
-					Denom:    coin.Denom,
-					Exponent: 0,
-				}},
-				Base: coin.Denom,
-			}
+	base64Priv := base64.StdEncoding.EncodeToString(priv.Bytes())
 
-			env.App.BankKeeper.SetDenomMetaData(env.Ctx, denomMetaData)
-		}
+	envRegister.Store(envId, env)
 
+	return C.CString(base64Priv)
+}
+
+//export InitAccountWithSecret
+func InitAccountWithSecret(envId uint64, coinsJson string, base64Secret string) *C.char {
+	env := loadEnv(envId)
+	var coins sdk.Coins
+
+	if err := json.Unmarshal([]byte(coinsJson), &coins); err != nil {
+		panic(err)
 	}
 
-	err := simapp.FundAccount(env.App.BankKeeper, env.Ctx, accAddr, coins)
+	secret, err := base64.StdEncoding.DecodeString(base64Secret)
 	if err != nil {
-		panic(sdkerrors.Wrapf(err, "Failed to fund account"))
+		panic(err)
 	}
+
+	priv := secp256k1.GenPrivKeyFromSecret(secret)
+	env.SetupAccountWithPrivKey(coins, priv)
 
 	base64Priv := base64.StdEncoding.EncodeToString(priv.Bytes())
 
@@ -147,6 +146,25 @@ func SetupValidator(envId uint64, coinsJson string) *C.char {
 
 	return C.CString(validator.OperatorAddress)
 
+}
+
+//export SetupValidatorWithSecret
+func SetupValidatorWithSecret(envId uint64, coinsJson string, base64Secret string) *C.char {
+	env := loadEnv(envId)
+	var coins sdk.Coins
+
+	if err := json.Unmarshal([]byte(coinsJson), &coins); err != nil {
+		panic(err)
+	}
+
+	secret, err := base64.StdEncoding.DecodeString(base64Secret)
+	if err != nil {
+		panic(err)
+	}
+
+	validator := env.SetupValidatorWithPrivKey(coins, ed25519.GenPrivKeyFromSecret(secret))
+
+	return C.CString(validator.OperatorAddress)
 }
 
 //export IncreaseTime

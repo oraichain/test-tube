@@ -219,6 +219,20 @@ extern "C" {
     pub fn SetupValidator(envId: GoUint64, coinsJson: GoString) -> *mut ::std::os::raw::c_char;
 }
 extern "C" {
+    pub fn InitAccountWithSecret(
+        envId: GoUint64,
+        coinsJson: GoString,
+        base64Secret: GoString,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    pub fn SetupValidatorWithSecret(
+        envId: GoUint64,
+        coinsJson: GoString,
+        base64Secret: GoString,
+    ) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
     pub fn BeginBlock(envId: GoUint64);
 }
 extern "C" {

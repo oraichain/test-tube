@@ -11,8 +11,8 @@ use crate::account::{Account, FeeSetting, SigningAccount};
 use crate::bindings::{
     AccountNumber, AccountSequence, BeginBlock, CleanUp, EndBlock, Execute, GetBlockHeight,
     GetBlockTime, GetParamSet, GetValidatorAddress, GetValidatorAddresses, GetValidatorPrivateKey,
-    GetValidatorPrivateKeys, IncreaseTime, InitAccount, InitTestEnv, Query, SetBlockTime,
-    SetChainID, SetParamSet, SetupValidator, Simulate,
+    GetValidatorPrivateKeys, IncreaseTime, InitAccount, InitAccountWithSecret, InitTestEnv, Query,
+    SetBlockTime, SetChainID, SetParamSet, SetupValidator, SetupValidatorWithSecret, Simulate,
 };
 use crate::redefine_as_go_string;
 use crate::runner::error::{DecodeError, EncodeError, RunnerError};
@@ -164,6 +164,7 @@ impl BaseApp {
     pub fn get_block_height(&self) -> i64 {
         unsafe { GetBlockHeight(self.id) }
     }
+
     /// Initialize account with initial balance of any coins.
     /// This function mints new coins and send to newly created account
     pub fn init_account(&self, coins: &[Coin]) -> RunnerResult<SigningAccount> {
@@ -200,10 +201,64 @@ impl BaseApp {
             },
         ))
     }
+
+    /// Initialize account with initial balance of any coins.
+    /// This function mints new coins and send to newly created account
+    pub fn init_account_with_secret(
+        &self,
+        coins: &[Coin],
+        base64_secret: &str,
+    ) -> RunnerResult<SigningAccount> {
+        let mut coins = coins.to_vec();
+
+        // invalid coins if denom are unsorted
+        coins.sort_by(|a, b| a.denom.cmp(&b.denom));
+
+        let coins_json = serde_json::to_string(&coins).map_err(EncodeError::JsonEncodeError)?;
+        redefine_as_go_string!(coins_json);
+        redefine_as_go_string!(base64_secret);
+
+        let base64_priv = unsafe {
+            BeginBlock(self.id);
+            let addr = InitAccountWithSecret(self.id, coins_json, base64_secret);
+            EndBlock(self.id);
+            CString::from_raw(addr)
+        }
+        .to_str()
+        .map_err(DecodeError::Utf8Error)?
+        .to_string();
+
+        let secp256k1_priv = base64::decode(base64_priv).map_err(DecodeError::Base64DecodeError)?;
+        let signging_key = SigningKey::from_bytes(&secp256k1_priv).map_err(|e| {
+            let msg = e.to_string();
+            DecodeError::SigningKeyDecodeError { msg }
+        })?;
+
+        Ok(SigningAccount::new(
+            self.address_prefix.clone(),
+            signging_key,
+            FeeSetting::Auto {
+                gas_price: Coin::new(OSMOSIS_MIN_GAS_PRICE, self.fee_denom.clone()),
+                gas_adjustment: self.default_gas_adjustment,
+            },
+        ))
+    }
+
     /// Convinience function to create multiple accounts with the same
     /// Initial coins balance
     pub fn init_accounts(&self, coins: &[Coin], count: u64) -> RunnerResult<Vec<SigningAccount>> {
         (0..count).map(|_| self.init_account(coins)).collect()
+    }
+
+    pub fn init_accounts_with_secrets(
+        &self,
+        coins: &[Coin],
+        base64_secrets: &[&str],
+    ) -> RunnerResult<Vec<SigningAccount>> {
+        base64_secrets
+            .iter()
+            .map(|&base64_secret| self.init_account_with_secret(coins, base64_secret))
+            .collect()
     }
 
     pub fn setup_validator(&self, coins: &[Coin]) -> RunnerResult<String> {
@@ -218,6 +273,48 @@ impl BaseApp {
         let operator_addr = unsafe {
             BeginBlock(self.id);
             let addr = SetupValidator(self.id, coins_json);
+            EndBlock(self.id);
+            CString::from_raw(addr)
+        }
+        .to_str()
+        .map_err(DecodeError::Utf8Error)?
+        .to_string();
+
+        Ok(operator_addr)
+    }
+
+    pub fn setup_validators(&self, coins: &[Coin], count: u64) -> RunnerResult<Vec<String>> {
+        (0..count).map(|_| self.setup_validator(coins)).collect()
+    }
+
+    pub fn setup_validators_with_secrets(
+        &self,
+        coins: &[Coin],
+        base64_secrets: &[&str],
+    ) -> RunnerResult<Vec<String>> {
+        base64_secrets
+            .iter()
+            .map(|&base64_secret| self.setup_validator_with_secret(coins, base64_secret))
+            .collect()
+    }
+
+    pub fn setup_validator_with_secret(
+        &self,
+        coins: &[Coin],
+        base64_secret: &str,
+    ) -> RunnerResult<String> {
+        let mut coins = coins.to_vec();
+
+        // invalid coins if denom are unsorted
+        coins.sort_by(|a, b| a.denom.cmp(&b.denom));
+
+        let coins_json = serde_json::to_string(&coins).map_err(EncodeError::JsonEncodeError)?;
+        redefine_as_go_string!(coins_json);
+        redefine_as_go_string!(base64_secret);
+
+        let operator_addr = unsafe {
+            BeginBlock(self.id);
+            let addr = SetupValidatorWithSecret(self.id, coins_json, base64_secret);
             EndBlock(self.id);
             CString::from_raw(addr)
         }
