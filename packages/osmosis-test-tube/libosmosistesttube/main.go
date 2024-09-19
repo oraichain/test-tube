@@ -428,7 +428,7 @@ func GetValidatorAddresses(envId uint64) []*C.char {
 func GetValidatorPrivateKey(envId uint64, n int32) *C.char {
 	env := loadEnv(envId)
 
-	priv := env.ValPrivs[n].Key
+	priv := env.ValPrivs[n].Bytes()
 	base64Priv := base64.StdEncoding.EncodeToString(priv)
 	return C.CString(base64Priv)
 }
@@ -438,7 +438,7 @@ func GetValidatorPrivateKeys(envId uint64) []*C.char {
 	env := loadEnv(envId)
 	var valPrivs []*C.char
 	for _, priv := range env.ValPrivs {
-		base64Priv := base64.StdEncoding.EncodeToString(priv.Key)
+		base64Priv := base64.StdEncoding.EncodeToString(priv.Bytes())
 		valPrivs = append(valPrivs, C.CString(base64Priv))
 	}
 

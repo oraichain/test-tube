@@ -11,14 +11,14 @@ import (
 	"golang.org/x/exp/rand"
 
 	// tendermint
+	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	tmtypes "github.com/tendermint/tendermint/proto/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
 
 	// cosmos-sdk
-
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/cosmos/cosmos-sdk/simapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -37,7 +37,7 @@ import (
 type TestEnv struct {
 	App                *app.OraichainApp
 	Ctx                sdk.Context
-	ValPrivs           []*secp256k1.PrivKey
+	ValPrivs           []cryptotypes.PrivKey
 	ParamTypesRegistry ParamTypeRegistry
 	NodeHome           string
 }
@@ -209,8 +209,8 @@ func (env *TestEnv) beginNewBlockWithProposer(_ bool, proposer sdk.ValAddress, b
 	env.Ctx = env.App.NewContext(false, reqBeginBlock.Header)
 }
 
-func (env *TestEnv) setupValidator(bondStatus stakingtypes.BondStatus) (*secp256k1.PrivKey, sdk.ValAddress) {
-	valPriv := secp256k1.GenPrivKey()
+func (env *TestEnv) setupValidator(bondStatus stakingtypes.BondStatus) (cryptotypes.PrivKey, sdk.ValAddress) {
+	valPriv := ed25519.GenPrivKey()
 	valPub := valPriv.PubKey()
 	valAddr := sdk.ValAddress(valPub.Address())
 	bondDenom := env.App.StakingKeeper.GetParams(env.Ctx).BondDenom
