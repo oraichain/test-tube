@@ -138,6 +138,8 @@ func SetupValidator(envId uint64, coinsJson string) *C.char {
 	}
 	validator := env.SetupValidator(coins)
 
+	envRegister.Store(envId, env)
+
 	return C.CString(validator.OperatorAddress)
 
 }
@@ -152,6 +154,8 @@ func SetupValidatorWithSecret(envId uint64, coinsJson string, secret string) *C.
 	}
 
 	validator := env.SetupValidatorWithPrivKey(coins, secp256k1.GenPrivKeyFromSecret([]byte(secret)))
+
+	envRegister.Store(envId, env)
 
 	return C.CString(validator.OperatorAddress)
 }
