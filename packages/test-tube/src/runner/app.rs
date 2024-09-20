@@ -118,10 +118,12 @@ impl BaseApp {
         Ok(accounts)
     }
 
-    /// Get the first validator signing account
-    pub fn get_first_validator_signing_account(&self) -> RunnerResult<SigningAccount> {
+    pub fn get_validator_signing_account_by_index(
+        &self,
+        index: i32,
+    ) -> RunnerResult<SigningAccount> {
         let base64_priv = unsafe {
-            let val_priv = GetValidatorPrivateKey(self.id, 0);
+            let val_priv = GetValidatorPrivateKey(self.id, index);
             CString::from_raw(val_priv)
         }
         .to_str()

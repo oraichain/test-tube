@@ -96,7 +96,18 @@ impl OsmosisTestApp {
 
     /// Get the first validator signing account
     pub fn get_first_validator_signing_account(&self) -> RunnerResult<SigningAccount> {
-        self.inner.get_first_validator_signing_account()
+        self.inner.get_validator_signing_account_by_index(0)
+    }
+
+    pub fn get_validator_signing_account_by_index(
+        &self,
+        index: i32,
+    ) -> RunnerResult<SigningAccount> {
+        self.inner.get_validator_signing_account_by_index(index)
+    }
+
+    pub fn get_validator_signing_accounts(&self) -> RunnerResult<Vec<SigningAccount>> {
+        self.inner.get_validator_signing_accounts()
     }
 
     /// Increase the time of the blockchain by the given number of seconds.
