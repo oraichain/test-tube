@@ -77,7 +77,7 @@ impl OsmosisTestApp {
         self.inner.setup_validator(coins)
     }
 
-    pub fn setup_validator_with_secrets(
+    pub fn setup_validator_with_secret(
         &self,
         coins: &[Coin],
         secret: &str,
