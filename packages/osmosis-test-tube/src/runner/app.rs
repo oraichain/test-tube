@@ -80,9 +80,9 @@ impl OsmosisTestApp {
     pub fn setup_validator_with_secrets(
         &self,
         coins: &[Coin],
-        base64_secret: &str,
+        secret: &str,
     ) -> RunnerResult<String> {
-        self.inner.setup_validator_with_secret(coins, base64_secret)
+        self.inner.setup_validator_with_secret(coins, secret)
     }
 
     pub fn get_validator_addresses(&self) -> RunnerResult<Vec<String>> {
@@ -113,9 +113,9 @@ impl OsmosisTestApp {
     pub fn init_account_with_secret(
         &self,
         coins: &[Coin],
-        base64_secret: &str,
+        secret: &str,
     ) -> RunnerResult<SigningAccount> {
-        self.inner.init_account_with_secret(coins, base64_secret)
+        self.inner.init_account_with_secret(coins, secret)
     }
 
     /// Convinience function to create multiple accounts with the same
@@ -127,9 +127,9 @@ impl OsmosisTestApp {
     pub fn init_accounts_with_secrets(
         &self,
         coins: &[Coin],
-        base64_secrets: &[&str],
+        secrets: &[&str],
     ) -> RunnerResult<Vec<SigningAccount>> {
-        self.inner.init_accounts_with_secrets(coins, base64_secrets)
+        self.inner.init_accounts_with_secrets(coins, secrets)
     }
 
     pub fn setup_validators(&self, coins: &[Coin], count: u64) -> RunnerResult<Vec<String>> {
@@ -139,10 +139,9 @@ impl OsmosisTestApp {
     pub fn setup_validators_with_secrets(
         &self,
         coins: &[Coin],
-        base64_secrets: &[&str],
+        secrets: &[&str],
     ) -> RunnerResult<Vec<String>> {
-        self.inner
-            .setup_validators_with_secrets(coins, base64_secrets)
+        self.inner.setup_validators_with_secrets(coins, secrets)
     }
 
     /// Simulate transaction execution and return gas info

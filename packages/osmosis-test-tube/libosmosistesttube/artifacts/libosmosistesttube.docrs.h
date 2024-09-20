@@ -85,9 +85,9 @@ extern "C"
 
   extern GoUint64 InitTestEnv();
   extern char *InitAccount(GoUint64 envId, GoString coinsJson);
-  extern char *InitAccountWithSecret(GoUint64 envId, GoString coinsJson, GoString base64Secret);
+  extern char *InitAccountWithSecret(GoUint64 envId, GoString coinsJson, GoString secret);
   extern char *SetupValidator(GoUint64 envId, GoString coinsJson);
-  extern char *SetupValidatorWithSecret(GoUint64 envId, GoString coinsJson, GoString base64Secret);
+  extern char *SetupValidatorWithSecret(GoUint64 envId, GoString coinsJson, GoString secret);
   extern void SetBlockTime(GoUint64 envId, GoInt64 nanoseconds);
   extern void IncreaseTime(GoUint64 envId, GoInt64 seconds);
   extern void SetChainID(GoUint64 envId, GoString chainID);

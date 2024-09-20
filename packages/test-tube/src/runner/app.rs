@@ -207,7 +207,7 @@ impl BaseApp {
     pub fn init_account_with_secret(
         &self,
         coins: &[Coin],
-        base64_secret: &str,
+        secret: &str,
     ) -> RunnerResult<SigningAccount> {
         let mut coins = coins.to_vec();
 
@@ -216,11 +216,11 @@ impl BaseApp {
 
         let coins_json = serde_json::to_string(&coins).map_err(EncodeError::JsonEncodeError)?;
         redefine_as_go_string!(coins_json);
-        redefine_as_go_string!(base64_secret);
+        redefine_as_go_string!(secret);
 
         let base64_priv = unsafe {
             BeginBlock(self.id);
-            let addr = InitAccountWithSecret(self.id, coins_json, base64_secret);
+            let addr = InitAccountWithSecret(self.id, coins_json, secret);
             EndBlock(self.id);
             CString::from_raw(addr)
         }
@@ -253,11 +253,11 @@ impl BaseApp {
     pub fn init_accounts_with_secrets(
         &self,
         coins: &[Coin],
-        base64_secrets: &[&str],
+        secrets: &[&str],
     ) -> RunnerResult<Vec<SigningAccount>> {
-        base64_secrets
+        secrets
             .iter()
-            .map(|&base64_secret| self.init_account_with_secret(coins, base64_secret))
+            .map(|&secret| self.init_account_with_secret(coins, secret))
             .collect()
     }
 
@@ -290,18 +290,18 @@ impl BaseApp {
     pub fn setup_validators_with_secrets(
         &self,
         coins: &[Coin],
-        base64_secrets: &[&str],
+        secrets: &[&str],
     ) -> RunnerResult<Vec<String>> {
-        base64_secrets
+        secrets
             .iter()
-            .map(|&base64_secret| self.setup_validator_with_secret(coins, base64_secret))
+            .map(|&secret| self.setup_validator_with_secret(coins, secret))
             .collect()
     }
 
     pub fn setup_validator_with_secret(
         &self,
         coins: &[Coin],
-        base64_secret: &str,
+        secret: &str,
     ) -> RunnerResult<String> {
         let mut coins = coins.to_vec();
 
@@ -310,11 +310,11 @@ impl BaseApp {
 
         let coins_json = serde_json::to_string(&coins).map_err(EncodeError::JsonEncodeError)?;
         redefine_as_go_string!(coins_json);
-        redefine_as_go_string!(base64_secret);
+        redefine_as_go_string!(secret);
 
         let operator_addr = unsafe {
             BeginBlock(self.id);
-            let addr = SetupValidatorWithSecret(self.id, coins_json, base64_secret);
+            let addr = SetupValidatorWithSecret(self.id, coins_json, secret);
             EndBlock(self.id);
             CString::from_raw(addr)
         }

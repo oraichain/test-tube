@@ -23,7 +23,6 @@ import (
 
 	// cosmos sdk
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -111,7 +110,7 @@ func InitAccount(envId uint64, coinsJson string) *C.char {
 }
 
 //export InitAccountWithSecret
-func InitAccountWithSecret(envId uint64, coinsJson string, base64Secret string) *C.char {
+func InitAccountWithSecret(envId uint64, coinsJson string, secret string) *C.char {
 	env := loadEnv(envId)
 	var coins sdk.Coins
 
@@ -119,12 +118,7 @@ func InitAccountWithSecret(envId uint64, coinsJson string, base64Secret string) 
 		panic(err)
 	}
 
-	secret, err := base64.StdEncoding.DecodeString(base64Secret)
-	if err != nil {
-		panic(err)
-	}
-
-	priv := secp256k1.GenPrivKeyFromSecret(secret)
+	priv := secp256k1.GenPrivKeyFromSecret([]byte(secret))
 	env.SetupAccountWithPrivKey(coins, priv)
 
 	base64Priv := base64.StdEncoding.EncodeToString(priv.Bytes())
@@ -149,7 +143,7 @@ func SetupValidator(envId uint64, coinsJson string) *C.char {
 }
 
 //export SetupValidatorWithSecret
-func SetupValidatorWithSecret(envId uint64, coinsJson string, base64Secret string) *C.char {
+func SetupValidatorWithSecret(envId uint64, coinsJson string, secret string) *C.char {
 	env := loadEnv(envId)
 	var coins sdk.Coins
 
@@ -157,12 +151,7 @@ func SetupValidatorWithSecret(envId uint64, coinsJson string, base64Secret strin
 		panic(err)
 	}
 
-	secret, err := base64.StdEncoding.DecodeString(base64Secret)
-	if err != nil {
-		panic(err)
-	}
-
-	validator := env.SetupValidatorWithPrivKey(coins, ed25519.GenPrivKeyFromSecret(secret))
+	validator := env.SetupValidatorWithPrivKey(coins, secp256k1.GenPrivKeyFromSecret([]byte(secret)))
 
 	return C.CString(validator.OperatorAddress)
 }

@@ -222,14 +222,14 @@ extern "C" {
     pub fn InitAccountWithSecret(
         envId: GoUint64,
         coinsJson: GoString,
-        base64Secret: GoString,
+        secret: GoString,
     ) -> *mut ::std::os::raw::c_char;
 }
 extern "C" {
     pub fn SetupValidatorWithSecret(
         envId: GoUint64,
         coinsJson: GoString,
-        base64Secret: GoString,
+        secret: GoString,
     ) -> *mut ::std::os::raw::c_char;
 }
 extern "C" {

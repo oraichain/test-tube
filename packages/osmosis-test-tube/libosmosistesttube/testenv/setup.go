@@ -18,7 +18,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	// cosmos-sdk
-	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/cosmos/cosmos-sdk/simapp"
@@ -191,7 +190,7 @@ func (env *TestEnv) SetupValidatorWithPrivKey(coins sdk.Coins, valPriv cryptotyp
 }
 
 func (env *TestEnv) SetupValidator(coins sdk.Coins) stakingtypes.Validator {
-	valPriv := ed25519.GenPrivKey()
+	valPriv := secp256k1.GenPrivKey()
 	return env.SetupValidatorWithPrivKey(coins, valPriv)
 }
 
