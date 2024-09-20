@@ -75,27 +75,24 @@ impl BaseApp {
         let addr = unsafe {
             let addr = GetValidatorAddress(self.id, 0);
             CString::from_raw(addr)
-        }
-        .to_str()
-        .map_err(DecodeError::Utf8Error)?
-        .to_string();
+                .to_str()
+                .map_err(DecodeError::Utf8Error)?
+                .to_string()
+        };
 
         Ok(addr)
     }
 
     pub fn get_validator_addresses(&self) -> RunnerResult<Vec<String>> {
         let addrs = unsafe {
-            let mut ret = vec![];
-            let addrs = GetValidatorAddresses(self.id);
-            for addr in addrs {
-                ret.push(
-                    CString::from_raw(addr)
-                        .to_str()
-                        .map_err(DecodeError::Utf8Error)?
-                        .to_string(),
-                );
-            }
-            ret
+            let addrs_pointer = GetValidatorAddresses(self.id);
+            CString::from_raw(addrs_pointer)
+                .to_str()
+                .map_err(DecodeError::Utf8Error)?
+                .split(',')
+                .into_iter()
+                .map(|addr| addr.to_string())
+                .collect()
         };
 
         Ok(addrs)
@@ -104,14 +101,20 @@ impl BaseApp {
     pub fn get_validator_signing_accounts(&self) -> RunnerResult<Vec<SigningAccount>> {
         let accounts = unsafe {
             let mut ret = vec![];
-            let privs = GetValidatorPrivateKeys(self.id);
-            for key in privs {
-                let base64_priv = CString::from_raw(key)
-                    .to_str()
-                    .map_err(DecodeError::Utf8Error)?
-                    .to_string();
-                ret.push(self.get_validator_signing_account(&base64_priv)?);
+            let privs_pointer = GetValidatorPrivateKeys(self.id);
+
+            let base64_privs: Vec<String> = CString::from_raw(privs_pointer)
+                .to_str()
+                .map_err(DecodeError::Utf8Error)?
+                .split(',')
+                .into_iter()
+                .map(|addr| addr.to_string())
+                .collect();
+
+            for base64_priv in &base64_privs {
+                ret.push(self.get_validator_signing_account(base64_priv)?);
             }
+
             ret
         };
 
@@ -125,10 +128,10 @@ impl BaseApp {
         let base64_priv = unsafe {
             let val_priv = GetValidatorPrivateKey(self.id, index);
             CString::from_raw(val_priv)
-        }
-        .to_str()
-        .map_err(DecodeError::Utf8Error)?
-        .to_string();
+                .to_str()
+                .map_err(DecodeError::Utf8Error)?
+                .to_string()
+        };
 
         self.get_validator_signing_account(&base64_priv)
     }

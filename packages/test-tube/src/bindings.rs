@@ -294,10 +294,10 @@ extern "C" {
     pub fn GetValidatorPrivateKey(envId: GoUint64, n: GoInt32) -> *mut ::std::os::raw::c_char;
 }
 extern "C" {
-    pub fn GetValidatorAddresses(envId: GoUint64) -> Vec<*mut ::std::os::raw::c_char>;
+    pub fn GetValidatorAddresses(envId: GoUint64) -> *mut ::std::os::raw::c_char;
 }
 extern "C" {
-    pub fn GetValidatorPrivateKeys(envId: GoUint64) -> Vec<*mut ::std::os::raw::c_char>;
+    pub fn GetValidatorPrivateKeys(envId: GoUint64) -> *mut ::std::os::raw::c_char;
 }
 extern "C" {
     pub fn GetBlockTime(envId: GoUint64) -> GoInt64;

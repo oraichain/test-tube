@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -425,35 +426,31 @@ func GetValidatorAddress(envId uint64, n int32) *C.char {
 }
 
 //export GetValidatorAddresses
-func GetValidatorAddresses(envId uint64) []*C.char {
+func GetValidatorAddresses(envId uint64) *C.char {
 	env := loadEnv(envId)
-	var valAddrs []*C.char
 	addresses := env.GetValidatorAddresses()
-	for _, address := range addresses {
-		valAddrs = append(valAddrs, C.CString(address))
-	}
-	return valAddrs
+	return C.CString(strings.Join(addresses, ","))
 }
 
 //export GetValidatorPrivateKey
 func GetValidatorPrivateKey(envId uint64, n int32) *C.char {
 	env := loadEnv(envId)
 
-	priv := env.ValPrivs[n].Bytes()
-	base64Priv := base64.StdEncoding.EncodeToString(priv)
+	priv := env.ValPrivs[n]
+	base64Priv := base64.StdEncoding.EncodeToString(priv.Bytes())
 	return C.CString(base64Priv)
 }
 
 //export GetValidatorPrivateKeys
-func GetValidatorPrivateKeys(envId uint64) []*C.char {
+func GetValidatorPrivateKeys(envId uint64) *C.char {
 	env := loadEnv(envId)
-	var valPrivs []*C.char
+	var valPrivs []string
 	for _, priv := range env.ValPrivs {
 		base64Priv := base64.StdEncoding.EncodeToString(priv.Bytes())
-		valPrivs = append(valPrivs, C.CString(base64Priv))
+		valPrivs = append(valPrivs, base64Priv)
 	}
 
-	return valPrivs
+	return C.CString(strings.Join(valPrivs, ","))
 }
 
 // ========= utils =========
