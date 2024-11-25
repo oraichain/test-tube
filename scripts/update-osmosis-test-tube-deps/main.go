@@ -35,9 +35,9 @@ func main() {
 	// replace internal packages
 	osmosisInternalRequires := make(map[string]string)
 	for _, req := range osmosisMod.Require {
-		if req.Mod.Path == "github.com/oraichain/orai/osmomath" ||
-			req.Mod.Path == "github.com/oraichain/orai/osmoutils" ||
-			req.Mod.Path == "github.com/oraichain/orai/x/ibc-hooks" {
+		if req.Mod.Path == "github.com/CosmWasm/wasmd/osmomath" ||
+			req.Mod.Path == "github.com/CosmWasm/wasmd/osmoutils" ||
+			req.Mod.Path == "github.com/CosmWasm/wasmd/x/ibc-hooks" {
 			osmosisInternalRequires[req.Mod.Path] = req.Mod.Version
 		}
 	}

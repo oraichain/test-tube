@@ -19,8 +19,8 @@ import (
 	proto "github.com/gogo/protobuf/proto"
 
 	// tendermint
-	abci "github.com/tendermint/tendermint/abci/types"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	abci "github.com/cometbft/cometbft/abci/types"
+	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 
 	// cosmos sdk
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -68,13 +68,13 @@ func InitTestEnv() uint64 {
 	// Allow testing unoptimized contract
 	wasmtypes.MaxWasmSize = 1024 * 1024 * 1024 * 1024 * 1024
 
-	env.Ctx = env.App.BaseApp.NewContext(false, tmproto.Header{Height: 0, ChainID: chainID, Time: time.Now().UTC()})
+	env.Ctx = env.App.BaseApp.NewContextLegacy(true, tmproto.Header{Height: 0, ChainID: chainID, Time: time.Now().UTC()})
 
 	blockTime := env.Ctx.BlockTime().Add(time.Duration(5) * time.Second)
 	env.BeginNewBlock(false, blockTime, chainID)
 
-	reqEndBlock := abci.RequestEndBlock{Height: env.Ctx.BlockHeight()}
-	env.App.EndBlock(reqEndBlock)
+	reqEndBlock := &abci.RequestFinalizeBlock{Height: env.Ctx.BlockHeight()}
+	env.App.FinalizeBlock(reqEndBlock)
 	env.App.Commit()
 
 	envRegister.Store(id, *env)
@@ -195,8 +195,8 @@ func BeginBlock(envId uint64) {
 //export EndBlock
 func EndBlock(envId uint64) {
 	env := loadEnv(envId)
-	reqEndBlock := abci.RequestEndBlock{Height: env.Ctx.BlockHeight()}
-	env.App.EndBlock(reqEndBlock)
+	reqEndBlock := &abci.RequestFinalizeBlock{Height: env.Ctx.BlockHeight()}
+	env.App.FinalizeBlock(reqEndBlock)
 	env.App.Commit()
 	envRegister.Store(envId, env)
 }
@@ -228,29 +228,28 @@ func WasmSudo(envId uint64, bech32Address, msgJson string) *C.char {
 //export Execute
 func Execute(envId uint64, base64ReqDeliverTx string) *C.char {
 	env := loadEnv(envId)
-	// Temp fix for concurrency issue
-	mu.Lock()
-	defer mu.Unlock()
 
-	reqDeliverTxBytes, err := base64.StdEncoding.DecodeString(base64ReqDeliverTx)
-	if err != nil {
-		panic(err)
-	}
-
-	reqDeliverTx := abci.RequestDeliverTx{}
-	err = proto.Unmarshal(reqDeliverTxBytes, &reqDeliverTx)
+	txBytes, err := base64.StdEncoding.DecodeString(base64ReqDeliverTx)
 	if err != nil {
 		return encodeErrToResultBytes(result.ExecuteError, err)
 	}
 
-	resDeliverTx := env.App.DeliverTx(reqDeliverTx)
-	bz, err := proto.Marshal(&resDeliverTx)
+	res, err := env.App.FinalizeBlock(&abci.RequestFinalizeBlock{
+		Txs:    [][]byte{txBytes},
+		Height: env.Ctx.BlockHeight(),
+		Time:   env.Ctx.BlockTime(),
+	})
 
 	if err != nil {
-		panic(err)
+		return encodeErrToResultBytes(result.ExecuteError, err)
 	}
 
 	envRegister.Store(envId, env)
+
+	bz, err := proto.Marshal(res)
+	if err != nil {
+		return encodeErrToResultBytes(result.ExecuteError, err)
+	}
 
 	return encodeBytesResultBytes(bz)
 }
@@ -263,7 +262,7 @@ func Query(envId uint64, path, base64QueryMsgBytes string) *C.char {
 		panic(err)
 	}
 
-	req := abci.RequestQuery{}
+	req := &abci.RequestQuery{}
 	req.Data = queryMsgBytes
 
 	route := env.App.GRPCQueryRouter().Route(path)

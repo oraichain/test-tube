@@ -6,25 +6,30 @@ import (
 	"strings"
 	"time"
 
+	sdkmath "cosmossdk.io/math"
 	// helpers
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	errorsmod "cosmossdk.io/errors"
+	"github.com/CosmWasm/wasmd/app/params"
 	"golang.org/x/exp/rand"
 
 	// tendermint
+	"cosmossdk.io/log"
+	abci "github.com/cometbft/cometbft/abci/types"
+	dbm "github.com/cosmos/cosmos-db"
+
+	cmtproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
-	tmtypes "github.com/tendermint/tendermint/proto/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 
 	// cosmos-sdk
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/server"
-	"github.com/cosmos/cosmos-sdk/simapp"
+	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	banktestutil "github.com/cosmos/cosmos-sdk/x/bank/testutil"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
-	"github.com/cosmos/cosmos-sdk/x/staking"
+
+	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
 	// wasmd
@@ -32,11 +37,11 @@ import (
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 
 	// osmosis
-	"github.com/oraichain/orai/app"
+	"github.com/CosmWasm/wasmd/app"
 )
 
 type TestEnv struct {
-	App                *app.OraichainApp
+	App                *app.WasmApp
 	Ctx                sdk.Context
 	ValPrivs           []cryptotypes.PrivKey
 	ParamTypesRegistry ParamTypeRegistry
@@ -73,7 +78,7 @@ const (
 	Bech32PrefixConsPub = Bech32Prefix + sdk.PrefixValidator + sdk.PrefixConsensus + sdk.PrefixPublic
 )
 
-func SetupOsmosisApp(nodeHome string) *app.OraichainApp {
+func SetupOsmosisApp(nodeHome string) *app.WasmApp {
 	db := dbm.NewMemDB()
 
 	cfg := sdk.GetConfig()
@@ -81,23 +86,22 @@ func SetupOsmosisApp(nodeHome string) *app.OraichainApp {
 	cfg.SetBech32PrefixForValidator(app.Bech32PrefixValAddr, app.Bech32PrefixValPub)
 	cfg.SetBech32PrefixForConsensusNode(app.Bech32PrefixConsAddr, app.Bech32PrefixConsPub)
 
-	appInstance := app.NewOraichainApp(
+	appInstance := app.NewWasmApp(
 		log.NewNopLogger(),
 		db,
 		nil,
 		true,
-		map[int64]bool{},
-		nodeHome,
-		5,
-		app.MakeEncodingConfig(),
-		wasm.EnableAllProposals,
-		DebugAppOptions{},
+		simtestutil.NewAppOptionsWithFlagHome(nodeHome),
 		emptyWasmOpts,
-		app.DefaultEvmOptions,
 	)
 
-	encCfg := app.MakeEncodingConfig()
-	genesisState := app.NewDefaultGenesisState(encCfg.Codec)
+	encCfg := params.EncodingConfig{
+		InterfaceRegistry: appInstance.InterfaceRegistry(),
+		Codec:             appInstance.AppCodec(),
+		TxConfig:          appInstance.TxConfig(),
+		Amino:             appInstance.LegacyAmino(),
+	}
+	genesisState := app.NewDefaultGenesisState(encCfg.Codec, appInstance.BasicModuleManager)
 
 	// Set up Wasm genesis state
 	wasmGen := wasm.GenesisState{
@@ -122,8 +126,8 @@ func SetupOsmosisApp(nodeHome string) *app.OraichainApp {
 
 	requireNoErr(err)
 
-	concensusParams := simapp.DefaultConsensusParams
-	concensusParams.Block = &abci.BlockParams{
+	concensusParams := simtestutil.DefaultConsensusParams
+	concensusParams.Block = &cmtproto.BlockParams{
 		MaxBytes: 22020096,
 		MaxGas:   -1,
 	}
@@ -132,7 +136,7 @@ func SetupOsmosisApp(nodeHome string) *app.OraichainApp {
 	stateBytes = []byte(strings.Replace(string(stateBytes), "\"stake\"", "\"orai\"", -1))
 
 	appInstance.InitChain(
-		abci.RequestInitChain{
+		&abci.RequestInitChain{
 			ChainId:         "Oraichain",
 			Validators:      []abci.ValidatorUpdate{},
 			ConsensusParams: concensusParams,
@@ -169,9 +173,9 @@ func (env *TestEnv) SetupAccountWithPrivKey(coins sdk.Coins, priv cryptotypes.Pr
 
 	}
 
-	err := simapp.FundAccount(env.App.BankKeeper, env.Ctx, accAddr, coins)
+	err := banktestutil.FundAccount(env.Ctx, env.App.BankKeeper, accAddr, coins)
 	if err != nil {
-		panic(sdkerrors.Wrapf(err, "Failed to fund account"))
+		panic(errorsmod.Wrapf(err, "Failed to fund account"))
 	}
 
 	return accAddr
@@ -181,9 +185,9 @@ func (env *TestEnv) SetupValidatorWithPrivKey(coins sdk.Coins, valPriv cryptotyp
 	valAddrFancy := env.setupValidator(stakingtypes.Bonded, valPriv)
 
 	env.ValPrivs = append(env.ValPrivs, valPriv)
-	err := simapp.FundAccount(env.App.BankKeeper, env.Ctx, valAddrFancy.Bytes(), coins)
+	err := banktestutil.FundAccount(env.Ctx, env.App.BankKeeper, valAddrFancy.Bytes(), coins)
 	if err != nil {
-		panic(sdkerrors.Wrapf(err, "Failed to fund account"))
+		panic(errorsmod.Wrapf(err, "Failed to fund account"))
 	}
 	validator, _ := env.App.StakingKeeper.GetValidator(env.Ctx, valAddrFancy)
 	return validator
@@ -197,22 +201,22 @@ func (env *TestEnv) SetupValidator(coins sdk.Coins) stakingtypes.Validator {
 func (env *TestEnv) BeginNewBlock(executeNextEpoch bool, blockTime time.Time, chainID string) {
 	var valAddr []byte
 
-	validators := env.App.StakingKeeper.GetAllValidators(env.Ctx)
+	validators, _ := env.App.StakingKeeper.GetAllValidators(env.Ctx)
 	if len(validators) >= 1 {
 		valAddrFancy, err := validators[rand.Intn(len(validators))].GetConsAddr()
 		requireNoErr(err)
-		valAddr = valAddrFancy.Bytes()
+		valAddr = valAddrFancy
 	} else {
 		validator := env.SetupValidator(sdk.NewCoins(sdk.NewInt64Coin("orai", 9223372036854775807)))
 		valConsAddr, _ := validator.GetConsAddr()
-		valAddr = valConsAddr.Bytes()
+		valAddr = valConsAddr
 	}
 
 	env.beginNewBlockWithProposer(executeNextEpoch, valAddr, blockTime, env.Ctx.BlockHeight()+1, chainID)
 }
 
 func (env *TestEnv) GetValidatorAddresses() []string {
-	validators := env.App.StakingKeeper.GetAllValidators(env.Ctx)
+	validators, _ := env.App.StakingKeeper.GetAllValidators(env.Ctx)
 	var addresses []string
 	for _, validator := range validators {
 		addresses = append(addresses, validator.OperatorAddress)
@@ -222,56 +226,54 @@ func (env *TestEnv) GetValidatorAddresses() []string {
 }
 
 // beginNewBlockWithProposer begins a new block with a proposer.
-func (env *TestEnv) beginNewBlockWithProposer(_ bool, proposer sdk.ValAddress, blockTime time.Time, blockHeight int64, chainID string) {
-	validator, found := env.App.StakingKeeper.GetValidator(env.Ctx, proposer)
-
-	if !found {
-		panic("validator not found")
-	}
+func (env *TestEnv) beginNewBlockWithProposer(executeNextEpoch bool, proposer sdk.ValAddress, blockTime time.Time, blockHeight int64, chainID string) {
+	validator, err := env.App.StakingKeeper.GetValidator(env.Ctx, proposer)
+	requireNoErr(err)
 
 	valConsAddr, err := validator.GetConsAddr()
 	requireNoErr(err)
 
-	valAddr := valConsAddr.Bytes()
+	valAddr := valConsAddr
 
-	header := tmtypes.Header{ChainID: chainID, Height: blockHeight, Time: blockTime}
-	newCtx := env.Ctx.WithBlockTime(blockTime).WithBlockHeight(blockHeight)
-	env.Ctx = newCtx
-	lastCommitInfo := abci.LastCommitInfo{
-		Votes: []abci.VoteInfo{{
-			Validator:       abci.Validator{Address: valAddr, Power: 1000},
-			SignedLastBlock: true,
-		}},
-	}
-	reqBeginBlock := abci.RequestBeginBlock{Header: header, LastCommitInfo: lastCommitInfo}
+	header := cmtproto.Header{ChainID: chainID, Height: blockHeight, Time: blockTime}
+	env.Ctx = env.Ctx.WithBlockTime(blockTime).WithBlockHeight(blockHeight)
+	voteInfos := []abci.VoteInfo{{
+		Validator:   abci.Validator{Address: valAddr, Power: 1000},
+		BlockIdFlag: cmtproto.BlockIDFlagCommit,
+	}}
+	env.Ctx = env.Ctx.WithVoteInfos(voteInfos)
 
-	env.App.BeginBlock(reqBeginBlock)
-	env.Ctx = env.App.NewContext(false, reqBeginBlock.Header)
+	_, err = env.App.BeginBlocker(env.Ctx)
+	requireNoErr(err)
+
+	env.Ctx = env.App.NewContextLegacy(false, header)
 }
 
 func (env *TestEnv) setupValidator(bondStatus stakingtypes.BondStatus, valPriv cryptotypes.PrivKey) sdk.ValAddress {
 
 	valPub := valPriv.PubKey()
 	valAddr := sdk.ValAddress(valPub.Address())
-	bondDenom := env.App.StakingKeeper.GetParams(env.Ctx).BondDenom
-	selfBond := sdk.NewCoins(sdk.Coin{Amount: sdk.NewInt(100), Denom: bondDenom})
+	params, err := env.App.StakingKeeper.GetParams(env.Ctx)
+	requireNoErr(err)
+	bondDenom := params.BondDenom
+	selfBond := sdk.NewCoins(sdk.Coin{Amount: sdkmath.NewInt(100), Denom: bondDenom})
 
-	err := simapp.FundAccount(env.App.BankKeeper, env.Ctx, sdk.AccAddress(valPub.Address()), selfBond)
+	err = banktestutil.FundAccount(env.Ctx, env.App.BankKeeper, sdk.AccAddress(valPub.Address()), selfBond)
 	requireNoErr(err)
 
-	stakingHandler := staking.NewHandler(env.App.StakingKeeper)
+	stakingMsgServer := stakingkeeper.NewMsgServerImpl(env.App.StakingKeeper)
 	stakingCoin := sdk.NewCoin(bondDenom, selfBond[0].Amount)
-	ZeroCommission := stakingtypes.NewCommissionRates(sdk.ZeroDec(), sdk.ZeroDec(), sdk.ZeroDec())
-	msg, err := stakingtypes.NewMsgCreateValidator(valAddr, valPub, stakingCoin, stakingtypes.Description{}, ZeroCommission, sdk.OneInt())
+	ZeroCommission := stakingtypes.NewCommissionRates(sdkmath.LegacyZeroDec(), sdkmath.LegacyZeroDec(), sdkmath.LegacyZeroDec())
+	msg, err := stakingtypes.NewMsgCreateValidator(valAddr.String(), valPub, stakingCoin, stakingtypes.Description{}, ZeroCommission, sdkmath.OneInt())
 	requireNoErr(err)
-	res, err := stakingHandler(env.Ctx, msg)
+	res, err := stakingMsgServer.CreateValidator(env.Ctx, msg)
 	requireNoErr(err)
 	requireNoNil("staking handler", res)
 
 	env.App.BankKeeper.SendCoinsFromModuleToModule(env.Ctx, stakingtypes.NotBondedPoolName, stakingtypes.BondedPoolName, sdk.NewCoins(stakingCoin))
 
-	val, found := env.App.StakingKeeper.GetValidator(env.Ctx, valAddr)
-	requierTrue("validator found", found)
+	val, err := env.App.StakingKeeper.GetValidator(env.Ctx, valAddr)
+	requireNoErr(err)
 
 	val = val.UpdateStatus(bondStatus)
 	env.App.StakingKeeper.SetValidator(env.Ctx, val)
@@ -305,11 +307,5 @@ func requireNoErr(err error) {
 func requireNoNil(name string, nilable any) {
 	if nilable == nil {
 		panic(fmt.Sprintf("%s must not be nil", name))
-	}
-}
-
-func requierTrue(name string, b bool) {
-	if !b {
-		panic(fmt.Sprintf("%s must be true", name))
 	}
 }
