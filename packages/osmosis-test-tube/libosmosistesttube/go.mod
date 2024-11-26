@@ -2,9 +2,12 @@ module github.com/osmosis-labs/test-tube/osmosis-test-tube
 
 go 1.22.6
 
+toolchain go1.22.7
+
 require (
 	cosmossdk.io/errors v1.0.1
 	cosmossdk.io/log v1.4.1
+	cosmossdk.io/math v1.3.0
 	github.com/CosmWasm/wasmd v1.0.0
 	github.com/cometbft/cometbft v0.38.12
 	github.com/cosmos/cosmos-db v1.0.2
@@ -23,7 +26,6 @@ require (
 	cosmossdk.io/collections v0.4.0 // indirect
 	cosmossdk.io/core v0.12.0 // indirect
 	cosmossdk.io/depinject v1.0.0 // indirect
-	cosmossdk.io/math v1.3.0 // indirect
 	cosmossdk.io/simapp v0.0.0-20231103111158-e83a20081ced // indirect
 	cosmossdk.io/store v1.1.1 // indirect
 	cosmossdk.io/x/circuit v0.1.1 // indirect
