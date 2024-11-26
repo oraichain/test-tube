@@ -20,7 +20,6 @@ import (
 
 	// tendermint
 	abci "github.com/cometbft/cometbft/abci/types"
-	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 
 	// cosmos sdk
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -50,6 +49,9 @@ func InitTestEnv() uint64 {
 	mu.Lock()
 	defer mu.Unlock()
 
+	// temp: suppress noise from stdout
+	os.Stdout = nil
+
 	envCounter += 1
 	id := envCounter
 
@@ -63,15 +65,19 @@ func InitTestEnv() uint64 {
 	env.NodeHome = nodeHome
 	env.ParamTypesRegistry = *testenv.NewParamTypeRegistry()
 
+	ctx, valPriv := testenv.InitChain(env.App)
+	env.Ctx = ctx.WithChainID(chainID)
+	env.ValPrivs = []*secp256k1.PrivKey{&valPriv}
+
 	env.SetupParamTypes()
 
 	// Allow testing unoptimized contract
 	wasmtypes.MaxWasmSize = 1024 * 1024 * 1024 * 1024 * 1024
 
-	env.Ctx = env.App.BaseApp.NewContextLegacy(true, tmproto.Header{Height: 0, ChainID: chainID, Time: time.Now().UTC()})
+	// env.Ctx = env.App.BaseApp.NewContextLegacy(false, cmtproto.Header{Height: 0, ChainID: chainID, Time: time.Now().UTC()})
 
-	blockTime := env.Ctx.BlockTime().Add(time.Duration(5) * time.Second)
-	env.BeginNewBlock(false, blockTime, chainID)
+	// blockTime := env.Ctx.BlockTime().Add(time.Duration(5) * time.Second)
+	// env.BeginNewBlock(blockTime, chainID)
 
 	reqEndBlock := &abci.RequestFinalizeBlock{Height: env.Ctx.BlockHeight()}
 	env.App.FinalizeBlock(reqEndBlock)
@@ -164,7 +170,7 @@ func SetupValidatorWithSecret(envId uint64, coinsJson string, secret string) *C.
 //export IncreaseTime
 func IncreaseTime(envId uint64, seconds uint64) {
 	env := loadEnv(envId)
-	env.BeginNewBlock(false, env.Ctx.BlockTime().Add(time.Duration(seconds)*time.Second), env.Ctx.ChainID())
+	env.BeginNewBlock(env.Ctx.BlockTime().Add(time.Duration(seconds)*time.Second), env.Ctx.ChainID())
 	envRegister.Store(envId, env)
 	EndBlock(envId)
 }
@@ -172,7 +178,7 @@ func IncreaseTime(envId uint64, seconds uint64) {
 //export SetBlockTime
 func SetBlockTime(envId uint64, nanoseconds uint64) {
 	env := loadEnv(envId)
-	env.BeginNewBlock(false, time.Unix(0, int64(nanoseconds)), env.Ctx.ChainID())
+	env.BeginNewBlock(time.Unix(0, int64(nanoseconds)), env.Ctx.ChainID())
 	envRegister.Store(envId, env)
 	EndBlock(envId)
 }
@@ -180,7 +186,7 @@ func SetBlockTime(envId uint64, nanoseconds uint64) {
 //export SetChainID
 func SetChainID(envId uint64, chainID string) {
 	env := loadEnv(envId)
-	env.BeginNewBlock(false, env.Ctx.BlockTime(), chainID)
+	env.BeginNewBlock(env.Ctx.BlockTime(), chainID)
 	envRegister.Store(envId, env)
 	EndBlock(envId)
 }
@@ -188,7 +194,7 @@ func SetChainID(envId uint64, chainID string) {
 //export BeginBlock
 func BeginBlock(envId uint64) {
 	env := loadEnv(envId)
-	env.BeginNewBlock(false, env.Ctx.BlockTime().Add(time.Duration(5)*time.Second), env.Ctx.ChainID())
+	env.BeginNewBlock(env.Ctx.BlockTime().Add(time.Duration(5)*time.Second), env.Ctx.ChainID())
 	envRegister.Store(envId, env)
 }
 

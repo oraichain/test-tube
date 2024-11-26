@@ -7,9 +7,18 @@ import (
 	"time"
 
 	sdkmath "cosmossdk.io/math"
+	"cosmossdk.io/simapp/params"
+
 	// helpers
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+
 	errorsmod "cosmossdk.io/errors"
-	"github.com/CosmWasm/wasmd/app/params"
+	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	cmttypes "github.com/cometbft/cometbft/types"
+	"github.com/cosmos/cosmos-sdk/baseapp"
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
+	"github.com/cosmos/cosmos-sdk/testutil/mock"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"golang.org/x/exp/rand"
 
 	// tendermint
@@ -34,7 +43,6 @@ import (
 
 	// wasmd
 	"github.com/CosmWasm/wasmd/x/wasm"
-	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 
 	// osmosis
 	"github.com/CosmWasm/wasmd/app"
@@ -43,7 +51,7 @@ import (
 type TestEnv struct {
 	App                *app.WasmApp
 	Ctx                sdk.Context
-	ValPrivs           []cryptotypes.PrivKey
+	ValPrivs           []*secp256k1.PrivKey
 	ParamTypesRegistry ParamTypeRegistry
 	NodeHome           string
 }
@@ -93,7 +101,15 @@ func SetupOsmosisApp(nodeHome string) *app.WasmApp {
 		true,
 		simtestutil.NewAppOptionsWithFlagHome(nodeHome),
 		emptyWasmOpts,
+		baseapp.SetChainID("Oraichain"),
 	)
+
+	return appInstance
+}
+
+func InitChain(appInstance *app.WasmApp) (sdk.Context, secp256k1.PrivKey) {
+
+	sdk.DefaultBondDenom = app.Bech32Prefix
 
 	encCfg := params.EncodingConfig{
 		InterfaceRegistry: appInstance.InterfaceRegistry(),
@@ -101,25 +117,104 @@ func SetupOsmosisApp(nodeHome string) *app.WasmApp {
 		TxConfig:          appInstance.TxConfig(),
 		Amino:             appInstance.LegacyAmino(),
 	}
-	genesisState := app.NewDefaultGenesisState(encCfg.Codec, appInstance.BasicModuleManager)
+
+	privVal := mock.NewPV()
+	pubKey, err := privVal.GetPubKey()
+	requireNoErr(err)
+	// create validator set with single validator
+	validator := cmttypes.NewValidator(pubKey, 1)
+	valSet := cmttypes.NewValidatorSet([]*cmttypes.Validator{validator})
+	senderPrivKey := secp256k1.GenPrivKey()
+	acc := authtypes.NewBaseAccount(senderPrivKey.PubKey().Address().Bytes(), senderPrivKey.PubKey(), 0, 0)
+
+	genesisState, err := app.GenesisStateWithValSet(appInstance.AppCodec(), app.NewDefaultGenesisState(encCfg.Codec, appInstance.BasicModuleManager), valSet, []authtypes.GenesisAccount{acc}, banktypes.Balance{Address: authtypes.NewModuleAddress(stakingtypes.BondedPoolName).String(),
+		Coins: sdk.Coins{sdk.NewCoin(sdk.DefaultBondDenom, sdk.DefaultPowerReduction)}})
+	requireNoErr(err)
 
 	// Set up Wasm genesis state
-	wasmGen := wasm.GenesisState{
+	wasmGen := wasmtypes.GenesisState{
 		Params: wasmtypes.Params{
 			// Allow store code without gov
 			CodeUploadAccess:             wasmtypes.AllowEverybody,
 			InstantiateDefaultPermission: wasmtypes.AccessTypeEverybody,
 		},
 	}
-	genesisState[wasm.ModuleName] = encCfg.Codec.MustMarshalJSON(&wasmGen)
+	genesisState[wasmtypes.ModuleName] = encCfg.Codec.MustMarshalJSON(&wasmGen)
 
 	// Set up staking genesis state
 	stakingParams := stakingtypes.DefaultParams()
 	stakingParams.UnbondingTime = time.Hour * 24 * 7 * 2 // 2 weeks
-	stakingGen := stakingtypes.GenesisState{
-		Params: stakingParams,
+	// stakingGen := stakingtypes.GenesisState{
+	// 	Params: stakingParams,
+	// }
+
+	validators := make([]stakingtypes.Validator, 0, len(valSet.Validators))
+	delegations := make([]stakingtypes.Delegation, 0, len(valSet.Validators))
+
+	bondAmt := sdk.DefaultPowerReduction
+	initValPowers := []abci.ValidatorUpdate{}
+
+	for _, val := range valSet.Validators {
+		pk, _ := cryptocodec.FromCmtPubKeyInterface(val.PubKey)
+		pkAny, _ := codectypes.NewAnyWithValue(pk)
+		validator := stakingtypes.Validator{
+			OperatorAddress:   sdk.ValAddress(val.Address).String(),
+			ConsensusPubkey:   pkAny,
+			Jailed:            false,
+			Status:            stakingtypes.Bonded,
+			Tokens:            bondAmt,
+			DelegatorShares:   sdkmath.LegacyOneDec(),
+			Description:       stakingtypes.Description{},
+			UnbondingHeight:   int64(0),
+			UnbondingTime:     time.Unix(0, 0).UTC(),
+			Commission:        stakingtypes.NewCommission(sdkmath.LegacyZeroDec(), sdkmath.LegacyZeroDec(), sdkmath.LegacyZeroDec()),
+			MinSelfDelegation: sdkmath.ZeroInt(),
+		}
+
+		valAddr, err := sdk.ValAddressFromHex(val.Address.String())
+		requireNoErr(err)
+		validators = append(validators, validator)
+		genAccs := []authtypes.GenesisAccount{acc}
+		delegations = append(delegations, stakingtypes.NewDelegation(genAccs[0].GetAddress().String(), valAddr.String(), sdkmath.LegacyOneDec()))
+
+		// add initial validator powers so consumer InitGenesis runs correctly
+		pub, _ := val.ToProto()
+		initValPowers = append(initValPowers, abci.ValidatorUpdate{
+			Power:  val.VotingPower,
+			PubKey: pub.PubKey,
+		})
 	}
-	genesisState[stakingtypes.ModuleName] = encCfg.Codec.MustMarshalJSON(&stakingGen)
+	// set validators and delegations
+	stakingGen := stakingtypes.NewGenesisState(stakingtypes.DefaultParams(), validators, delegations)
+	genesisState[stakingtypes.ModuleName] = encCfg.Codec.MustMarshalJSON(stakingGen)
+
+	balances := []banktypes.Balance{}
+	totalSupply := sdk.NewCoins()
+	for _, b := range balances {
+		// add genesis acc tokens to total supply
+		totalSupply = totalSupply.Add(b.Coins...)
+	}
+
+	for range delegations {
+		// add delegated tokens to total supply
+		totalSupply = totalSupply.Add(sdk.NewCoin(sdk.DefaultBondDenom, bondAmt))
+	}
+
+	// add bonded amount to bonded pool module account
+	balances = append(balances, banktypes.Balance{
+		Address: authtypes.NewModuleAddress(stakingtypes.BondedPoolName).String(),
+		Coins:   sdk.Coins{sdk.NewCoin(sdk.DefaultBondDenom, bondAmt)},
+	})
+
+	// update total supply
+	bankGenesis := banktypes.NewGenesisState(
+		banktypes.DefaultGenesisState().Params,
+		balances,
+		totalSupply,
+		[]banktypes.Metadata{},
+		[]banktypes.SendEnabled{},
+	)
+	genesisState[banktypes.ModuleName] = appInstance.AppCodec().MustMarshalJSON(bankGenesis)
 
 	// Set up incentive genesis state
 	stateBytes, err := json.MarshalIndent(genesisState, "", " ")
@@ -144,7 +239,30 @@ func SetupOsmosisApp(nodeHome string) *app.WasmApp {
 		},
 	)
 
-	return appInstance
+	ctx := appInstance.NewContextLegacy(false, cmtproto.Header{Height: 0, ChainID: "osmosis-1", Time: time.Now().UTC()})
+
+	// Manually set validator signing info, otherwise we panic
+	vals, err := appInstance.StakingKeeper.GetAllValidators(ctx)
+	if err != nil {
+		panic(err)
+	}
+	for _, val := range vals {
+		consAddr, _ := val.GetConsAddr()
+		signingInfo := slashingtypes.NewValidatorSigningInfo(
+			consAddr,
+			ctx.BlockHeight(),
+			0,
+			time.Unix(0, 0),
+			false,
+			0,
+		)
+
+		err := appInstance.SlashingKeeper.SetValidatorSigningInfo(ctx, consAddr, signingInfo)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return ctx, secp256k1.PrivKey{Key: privVal.PrivKey.Bytes()}
 }
 
 func (env *TestEnv) SetupAccount(coins sdk.Coins) cryptotypes.PrivKey {
@@ -181,7 +299,7 @@ func (env *TestEnv) SetupAccountWithPrivKey(coins sdk.Coins, priv cryptotypes.Pr
 	return accAddr
 }
 
-func (env *TestEnv) SetupValidatorWithPrivKey(coins sdk.Coins, valPriv cryptotypes.PrivKey) stakingtypes.Validator {
+func (env *TestEnv) SetupValidatorWithPrivKey(coins sdk.Coins, valPriv *secp256k1.PrivKey) stakingtypes.Validator {
 	valAddrFancy := env.setupValidator(stakingtypes.Bonded, valPriv)
 
 	env.ValPrivs = append(env.ValPrivs, valPriv)
@@ -198,7 +316,7 @@ func (env *TestEnv) SetupValidator(coins sdk.Coins) stakingtypes.Validator {
 	return env.SetupValidatorWithPrivKey(coins, valPriv)
 }
 
-func (env *TestEnv) BeginNewBlock(executeNextEpoch bool, blockTime time.Time, chainID string) {
+func (env *TestEnv) BeginNewBlock(blockTime time.Time, chainID string) {
 	var valAddr []byte
 
 	validators, _ := env.App.StakingKeeper.GetAllValidators(env.Ctx)
@@ -212,7 +330,7 @@ func (env *TestEnv) BeginNewBlock(executeNextEpoch bool, blockTime time.Time, ch
 		valAddr = valConsAddr
 	}
 
-	env.beginNewBlockWithProposer(executeNextEpoch, valAddr, blockTime, env.Ctx.BlockHeight()+1, chainID)
+	env.beginNewBlockWithProposer(valAddr, blockTime, env.Ctx.BlockHeight()+1, chainID)
 }
 
 func (env *TestEnv) GetValidatorAddresses() []string {
@@ -226,7 +344,7 @@ func (env *TestEnv) GetValidatorAddresses() []string {
 }
 
 // beginNewBlockWithProposer begins a new block with a proposer.
-func (env *TestEnv) beginNewBlockWithProposer(executeNextEpoch bool, proposer sdk.ValAddress, blockTime time.Time, blockHeight int64, chainID string) {
+func (env *TestEnv) beginNewBlockWithProposer(proposer sdk.ValAddress, blockTime time.Time, blockHeight int64, chainID string) {
 	validator, err := env.App.StakingKeeper.GetValidator(env.Ctx, proposer)
 	requireNoErr(err)
 
@@ -236,7 +354,7 @@ func (env *TestEnv) beginNewBlockWithProposer(executeNextEpoch bool, proposer sd
 	valAddr := valConsAddr
 
 	header := cmtproto.Header{ChainID: chainID, Height: blockHeight, Time: blockTime}
-	env.Ctx = env.Ctx.WithBlockTime(blockTime).WithBlockHeight(blockHeight)
+	env.Ctx = env.Ctx.WithBlockHeader(header)
 	voteInfos := []abci.VoteInfo{{
 		Validator:   abci.Validator{Address: valAddr, Power: 1000},
 		BlockIdFlag: cmtproto.BlockIDFlagCommit,
@@ -256,7 +374,7 @@ func (env *TestEnv) setupValidator(bondStatus stakingtypes.BondStatus, valPriv c
 	params, err := env.App.StakingKeeper.GetParams(env.Ctx)
 	requireNoErr(err)
 	bondDenom := params.BondDenom
-	selfBond := sdk.NewCoins(sdk.Coin{Amount: sdkmath.NewInt(100), Denom: bondDenom})
+	selfBond := sdk.NewCoins(sdk.Coin{Amount: sdk.DefaultPowerReduction, Denom: bondDenom})
 
 	err = banktestutil.FundAccount(env.Ctx, env.App.BankKeeper, sdk.AccAddress(valPub.Address()), selfBond)
 	requireNoErr(err)
@@ -289,7 +407,10 @@ func (env *TestEnv) setupValidator(bondStatus stakingtypes.BondStatus, valPriv c
 		false,
 		0,
 	)
-	env.App.SlashingKeeper.SetValidatorSigningInfo(env.Ctx, consAddr, signingInfo)
+	err = env.App.SlashingKeeper.SetValidatorSigningInfo(env.Ctx, consAddr, signingInfo)
+	if err != nil {
+		panic(err)
+	}
 
 	return valAddr
 }
